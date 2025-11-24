@@ -1,7 +1,8 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { Trip, Activity } from '../types';
+import { Loader2 } from 'lucide-react';
 
 // Fix for default leaflet marker icon missing in standard builds
 // We use CDN URLs instead of importing assets directly to avoid bundler issues in this environment
@@ -81,6 +82,7 @@ const CustomMarker: React.FC<{ activity: Activity; isActive: boolean; onClick: (
 };
 
 const TripMap: React.FC<MapProps> = ({ trip, activeActivityId, onMarkerClick }) => {
+  const [isMapLoaded, setIsMapLoaded] = useState(false);
   const allActivities = trip.schedule.flatMap(day => day.activities);
 
   // Default center (will be overridden by MapController)
@@ -90,16 +92,34 @@ const TripMap: React.FC<MapProps> = ({ trip, activeActivityId, onMarkerClick }) 
 
   return (
     <div className="h-full w-full bg-[#f4f4f4] relative z-0">
+      {/* Loading indicator */}
+      {!isMapLoaded && (
+        <div className="absolute inset-0 flex items-center justify-center bg-neutral-100 z-50">
+          <div className="text-center">
+            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2 text-neutral-400" />
+            <p className="text-xs text-neutral-500 uppercase tracking-widest">Loading Map</p>
+          </div>
+        </div>
+      )}
+      
       <MapContainer 
         center={center} 
         zoom={13} 
         style={{ height: '100%', width: '100%' }}
         zoomControl={false}
+        preferCanvas={true}
+        whenReady={() => {
+          // Set a small delay to ensure tiles are loaded
+          setTimeout(() => setIsMapLoaded(true), 300);
+        }}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" 
-          // Using CartoDB Positron for the clean B&W look
+          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+          maxZoom={19}
+          updateWhenIdle={false}
+          updateWhenZooming={false}
+          keepBuffer={2}
         />
         <MapController activities={allActivities} activeId={activeActivityId} />
         
