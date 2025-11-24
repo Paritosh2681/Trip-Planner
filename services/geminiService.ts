@@ -34,10 +34,23 @@ export const generateTripItinerary = async (destination: string, days: number): 
     Your tone should be friendly, descriptive, and inviting—like a knowledgeable local sharing their favorite spots. 
     Avoid overly technical, academic, or dry language. Focus on the experience and atmosphere.
     
-    CRITICAL: You must provide EXACT and PRECISE latitude and longitude coordinates (minimum 6 decimal places) for every location.
-    Use real coordinates for the actual entrance or main location of each place. Do not use approximate or city-center coordinates.
-    Example: For Taj Mahal, use {lat: 27.175015, lng: 78.042155} NOT {lat: 27.1751, lng: 78.0421}
-    The output must be strictly valid JSON matching the schema provided.
+    ⚠️ CRITICAL COORDINATE REQUIREMENTS ⚠️
+    You MUST provide HIGHLY ACCURATE GPS coordinates with AT LEAST 6-8 decimal places for EVERY location:
+    - Use the EXACT coordinates of the main entrance or center point of each specific place
+    - Do NOT use city-center coordinates or approximate locations
+    - Do NOT reuse the same coordinates for different locations
+    - Verify each coordinate corresponds to the actual physical location
+    - Format: {lat: XX.XXXXXXXX, lng: XX.XXXXXXXX}
+    
+    Examples of CORRECT coordinates:
+    - Taj Mahal: {lat: 27.17500600, lng: 78.04215500}
+    - Eiffel Tower: {lat: 48.85837009, lng: 2.29447746}
+    - Statue of Liberty: {lat: 40.68924500, lng: -74.04450040}
+    - Sydney Opera House: {lat: -33.85678200, lng: 151.21529800}
+    
+    INCORRECT (too vague): {lat: 27.17, lng: 78.04} or {lat: 27.175, lng: 78.042}
+    
+    Each location MUST have unique, precise coordinates. The output must be strictly valid JSON matching the schema provided.
   `;
 
   const prompt = `Plan a ${days}-day trip to ${destination}. Create a balanced itinerary with popular attractions, local experiences, and diverse activities. Keep it concise but informative.`;
@@ -85,10 +98,10 @@ export const generateTripItinerary = async (destination: string, days: number): 
                       coordinates: {
                         type: Type.OBJECT,
                         properties: {
-                          lat: { type: Type.NUMBER, description: "Precise latitude with minimum 6 decimal places" },
-                          lng: { type: Type.NUMBER, description: "Precise longitude with minimum 6 decimal places" }
+                          lat: { type: Type.NUMBER, description: "HIGHLY PRECISE latitude with 6-8 decimal places (e.g., 27.17500600). Must be exact GPS coordinates of the specific location, not city center." },
+                          lng: { type: Type.NUMBER, description: "HIGHLY PRECISE longitude with 6-8 decimal places (e.g., 78.04215500). Must be exact GPS coordinates of the specific location, not city center." }
                         },
-                        description: "Exact coordinates of the location entrance/main area, not city center"
+                        description: "CRITICAL: Must be EXACT GPS coordinates of the location's main entrance or center point with 6-8 decimal precision. Each location must have unique coordinates."
                       },
                       duration: { type: Type.STRING },
                       costEstimate: { type: Type.STRING },
