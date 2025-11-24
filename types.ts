@@ -13,6 +13,19 @@ export interface Activity {
   duration: string;
   costEstimate: string;
   type: 'sightseeing' | 'nature' | 'culture' | 'food' | 'shopping' | 'entertainment' | 'relax' | 'transit';
+  // Extended fields for expandable cards
+  images?: string[];
+  fullDescription?: string;
+  openingHours?: {
+    today?: string;
+    weekly?: { day: string; hours: string }[];
+  };
+  suggestedDuration?: string;
+  ticketPrice?: string;
+  bestTimeToVisit?: string;
+  address?: string;
+  transportToNext?: string;
+  tags?: string[];
 }
 
 export interface DaySchedule {

@@ -79,7 +79,7 @@ export const generateTripItinerary = async (destination: string, days: number): 
                       id: { type: Type.STRING, description: "Unique ID (e.g., 'd1-a1')" },
                       time: { type: Type.STRING, description: "e.g., '09:00 - 11:30'" },
                       title: { type: Type.STRING },
-                      description: { type: Type.STRING, description: "Inviting description of what to do/see there, atmosphere, and why it's popular. Avoid technical architectural jargon." },
+                      description: { type: Type.STRING, description: "Short one-line summary (20-30 words) for compact view." },
                       locationName: { type: Type.STRING },
                       coordinates: {
                         type: Type.OBJECT,
@@ -93,6 +93,41 @@ export const generateTripItinerary = async (destination: string, days: number): 
                       type: { 
                         type: Type.STRING, 
                         enum: ["sightseeing", "nature", "culture", "food", "shopping", "entertainment", "relax", "transit"] 
+                      },
+                      images: {
+                        type: Type.ARRAY,
+                        items: { type: Type.STRING },
+                        description: "1-3 image URLs (use placeholder like 'https://source.unsplash.com/800x600/?[location],[title]' format)"
+                      },
+                      fullDescription: { 
+                        type: Type.STRING, 
+                        description: "Detailed 40-90 word travel-friendly description with atmosphere, why it's popular, what to expect." 
+                      },
+                      openingHours: {
+                        type: Type.OBJECT,
+                        properties: {
+                          today: { type: Type.STRING, description: "e.g., '9:00 AM - 6:00 PM' or 'Closed'" },
+                          weekly: {
+                            type: Type.ARRAY,
+                            items: {
+                              type: Type.OBJECT,
+                              properties: {
+                                day: { type: Type.STRING },
+                                hours: { type: Type.STRING }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      suggestedDuration: { type: Type.STRING, description: "e.g., '60-90 minutes', '1.5-2 hours'" },
+                      ticketPrice: { type: Type.STRING, description: "e.g., 'Free', '$15-20', 'From $25'" },
+                      bestTimeToVisit: { type: Type.STRING, description: "1-2 line tip, e.g., 'Best at sunset', 'Avoid midday crowds'" },
+                      address: { type: Type.STRING, description: "Full street address" },
+                      transportToNext: { type: Type.STRING, description: "e.g., '10 min walk', '15 min by metro (Line 2)'" },
+                      tags: {
+                        type: Type.ARRAY,
+                        items: { type: Type.STRING },
+                        description: "2-4 relevant tags like 'Iconic', 'Photo Spot', 'Local Favorite', 'Historic'"
                       }
                     }
                   }

@@ -18,60 +18,294 @@ const ActivityCard: React.FC<{
     onClick: () => void; 
 }> = ({ activity, isActive, onClick }) => {
     const [isExpanded, setIsExpanded] = useState(false);
+    const [selectedImage, setSelectedImage] = useState<string | null>(null);
+    const [imagesLoaded, setImagesLoaded] = useState(false);
+    const prefersReducedMotion = useRef(false);
 
-    // Expand description if active
     useEffect(() => {
-        if (isActive) setIsExpanded(true);
-    }, [isActive]);
+        // Check for reduced motion preference
+        const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+        prefersReducedMotion.current = mediaQuery.matches;
+    }, []);
+
+    const handleCardClick = () => {
+        onClick();
+    };
+
+    const toggleExpand = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setIsExpanded(!isExpanded);
+        // Lazy load images when expanding
+        if (!isExpanded && activity.images && !imagesLoaded) {
+            setImagesLoaded(true);
+        }
+    };
+
+    const handleKeyPress = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            toggleExpand(e as any);
+        }
+    };
+
+    const copyAddress = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (activity.address) {
+            navigator.clipboard.writeText(activity.address);
+        }
+    };
 
     return (
         <div 
             id={`activity-${activity.id}`}
-            onClick={onClick}
+            role="button"
+            tabIndex={0}
+            aria-expanded={isExpanded}
+            onKeyDown={handleKeyPress}
             className={`
-                group relative p-5 border border-arch-line transition-all duration-300 cursor-pointer break-inside-avoid
-                ${isActive ? 'bg-neutral-50 border-black ring-1 ring-black shadow-lg translate-x-1' : 'hover:border-neutral-400 hover:bg-neutral-50'}
-                print:border print:shadow-none print:translate-x-0 print:p-4 print:mb-4
+                group relative border border-arch-line break-inside-avoid
+                ${isActive ? 'bg-neutral-50 border-black ring-1 ring-black shadow-lg' : 'hover:border-neutral-400 hover:bg-neutral-50 hover:-translate-y-1'}
+                ${prefersReducedMotion.current ? '' : 'transition-all duration-300'}
+                print:border print:shadow-none print:translate-y-0 print:p-4 print:mb-4
+                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2
             `}
         >
-            {/* Timeline dot (Hide in print/pdf) */}
+            {/* Timeline dot */}
             <div 
                 data-html2canvas-ignore="true"
                 className={`absolute -left-[45px] md:-left-[53px] top-6 w-3 h-3 border border-black transition-colors print:hidden ${isActive ? 'bg-black' : 'bg-white'}`}
             ></div>
 
-            <div className="flex justify-between items-start mb-2">
-                <span className="font-mono text-xs text-neutral-500">{activity.time}</span>
-                <span className="text-[10px] uppercase tracking-widest border border-neutral-200 px-2 py-0.5">{activity.type}</span>
-            </div>
-            
-            <h3 className="text-xl font-medium font-display mb-2 group-hover:text-black leading-tight">{activity.title}</h3>
-            
-            <div className="relative">
-                <p className={`text-sm text-neutral-600 leading-relaxed mb-3 ${!isExpanded ? 'line-clamp-2' : ''}`}>
+            {/* Compact header - always visible */}
+            <div className="p-5 cursor-pointer" onClick={handleCardClick}>
+                <div className="flex justify-between items-start mb-2">
+                    <span className="font-mono text-xs text-neutral-500">{activity.time}</span>
+                    <div className="flex items-center gap-2">
+                        <span className="text-[10px] uppercase tracking-widest border border-neutral-200 px-2 py-0.5">{activity.type}</span>
+                        <button 
+                            onClick={toggleExpand}
+                            className="p-1 hover:bg-neutral-200 transition-colors print:hidden"
+                            aria-label={isExpanded ? "Collapse details" : "Expand details"}
+                        >
+                            {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        </button>
+                    </div>
+                </div>
+                
+                <h3 className="text-xl font-medium font-display mb-2 group-hover:text-black leading-tight">{activity.title}</h3>
+                
+                <p className="text-sm text-neutral-600 leading-relaxed mb-3 line-clamp-1">
                     {activity.description}
                 </p>
-                {activity.description.length > 120 && (
+                
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-neutral-400 font-mono">
+                    <div className="flex items-center gap-1">
+                        <MapPin size={12} /> <span className="truncate max-w-[150px]">{activity.locationName}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <Clock size={12} /> {activity.duration}
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <Wallet size={12} /> {activity.costEstimate}
+                    </div>
+                </div>
+            </div>
+
+            {/* Expanded content */}
+            {isExpanded && (
+                <div 
+                    className={`border-t border-arch-line bg-white ${prefersReducedMotion.current ? '' : 'animate-in slide-in-from-top-2 duration-200'}`}
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    {/* Close button */}
+                    <div className="flex justify-end p-3 print:hidden">
+                        <button 
+                            onClick={toggleExpand}
+                            className="text-neutral-400 hover:text-black transition-colors"
+                            aria-label="Close details"
+                        >
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+                                <line x1="12" y1="4" x2="4" y2="12"></line>
+                                <line x1="4" y1="4" x2="12" y2="12"></line>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div className="px-5 pb-5 space-y-4">
+                        {/* Image Gallery */}
+                        {activity.images && activity.images.length > 0 && imagesLoaded && (
+                            <div className="space-y-2">
+                                <img 
+                                    src={activity.images[0]} 
+                                    alt={activity.title}
+                                    loading="lazy"
+                                    onClick={() => setSelectedImage(activity.images![0])}
+                                    className="w-full h-48 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                />
+                                {activity.images.length > 1 && (
+                                    <div className="flex gap-2 overflow-x-auto">
+                                        {activity.images.slice(1).map((img, idx) => (
+                                            <img 
+                                                key={idx}
+                                                src={img}
+                                                alt={`${activity.title} ${idx + 2}`}
+                                                loading="lazy"
+                                                onClick={() => setSelectedImage(img)}
+                                                className="h-16 w-24 object-cover cursor-pointer hover:opacity-90 transition-opacity flex-shrink-0"
+                                            />
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Full Description */}
+                        {activity.fullDescription && (
+                            <div>
+                                <h4 className="text-xs uppercase tracking-widest text-neutral-400 mb-2">Description</h4>
+                                <p className="text-sm text-neutral-700 leading-relaxed">{activity.fullDescription}</p>
+                            </div>
+                        )}
+
+                        {/* Opening Hours */}
+                        {activity.openingHours && (
+                            <div>
+                                <h4 className="text-xs uppercase tracking-widest text-neutral-400 mb-2">Opening Hours</h4>
+                                {activity.openingHours.today && (
+                                    <p className="text-sm font-medium mb-1">Today: {activity.openingHours.today}</p>
+                                )}
+                                {activity.openingHours.weekly && (
+                                    <div className="text-xs text-neutral-600 space-y-0.5">
+                                        {activity.openingHours.weekly.map((day, idx) => (
+                                            <div key={idx} className="flex justify-between">
+                                                <span>{day.day}</span>
+                                                <span>{day.hours}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Grid for compact info */}
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                            {/* Suggested Duration */}
+                            {activity.suggestedDuration && (
+                                <div>
+                                    <h4 className="text-xs uppercase tracking-widest text-neutral-400 mb-1 flex items-center gap-1">
+                                        <Clock size={12} /> Visit Time
+                                    </h4>
+                                    <p className="text-neutral-700">{activity.suggestedDuration}</p>
+                                </div>
+                            )}
+
+                            {/* Ticket Price */}
+                            {activity.ticketPrice && (
+                                <div>
+                                    <h4 className="text-xs uppercase tracking-widest text-neutral-400 mb-1 flex items-center gap-1">
+                                        <Wallet size={12} /> Price
+                                    </h4>
+                                    <p className="text-neutral-700">{activity.ticketPrice}</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Best Time to Visit */}
+                        {activity.bestTimeToVisit && (
+                            <div className="bg-neutral-50 p-3 border-l-2 border-black">
+                                <h4 className="text-xs uppercase tracking-widest text-neutral-400 mb-1">Best Time to Visit</h4>
+                                <p className="text-sm text-neutral-700">{activity.bestTimeToVisit}</p>
+                            </div>
+                        )}
+
+                        {/* Address */}
+                        {activity.address && (
+                            <div>
+                                <h4 className="text-xs uppercase tracking-widest text-neutral-400 mb-1 flex items-center gap-1">
+                                    <MapPin size={12} /> Address
+                                </h4>
+                                <p className="text-sm text-neutral-700 mb-1">{activity.address}</p>
+                                <button 
+                                    onClick={copyAddress}
+                                    className="text-xs text-neutral-500 hover:text-black underline"
+                                >
+                                    Copy address
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Transport to Next */}
+                        {activity.transportToNext && (
+                            <div className="text-xs text-neutral-500 border-t border-neutral-200 pt-3">
+                                <span className="uppercase tracking-widest">Next: </span>
+                                {activity.transportToNext}
+                            </div>
+                        )}
+
+                        {/* Tags */}
+                        {activity.tags && activity.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                                {activity.tags.map((tag, idx) => (
+                                    <span 
+                                        key={idx}
+                                        className="text-[10px] uppercase tracking-widest border border-neutral-300 px-2 py-1"
+                                    >
+                                        {tag}
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Actions */}
+                        <div className="flex flex-wrap gap-3 pt-3 border-t border-neutral-200 print:hidden">
+                            <button className="text-xs uppercase tracking-widest text-neutral-500 hover:text-black flex items-center gap-1">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+                                </svg>
+                                Bookmark
+                            </button>
+                            <button className="text-xs uppercase tracking-widest text-neutral-500 hover:text-black flex items-center gap-1">
+                                <Share2 size={14} />
+                                Share
+                            </button>
+                            <button className="text-xs uppercase tracking-widest text-neutral-500 hover:text-black flex items-center gap-1">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                </svg>
+                                Add to Calendar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Lightbox for images */}
+            {selectedImage && (
+                <div 
+                    className="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center p-4 animate-in fade-in duration-200"
+                    onClick={() => setSelectedImage(null)}
+                >
                     <button 
-                        onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }}
-                        className="text-[10px] uppercase tracking-widest text-neutral-400 hover:text-black mb-3 underline decoration-1 underline-offset-2 flex items-center gap-1"
+                        className="absolute top-4 right-4 text-white hover:text-neutral-300"
+                        onClick={() => setSelectedImage(null)}
+                        aria-label="Close lightbox"
                     >
-                        {isExpanded ? 'Show Less' : 'Read More'}
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
                     </button>
-                )}
-            </div>
-            
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-neutral-400 font-mono">
-                <div className="flex items-center gap-1">
-                    <MapPin size={12} /> {activity.locationName}
+                    <img 
+                        src={selectedImage}
+                        alt="Full size"
+                        className="max-w-full max-h-full object-contain"
+                        onClick={(e) => e.stopPropagation()}
+                    />
                 </div>
-                <div className="flex items-center gap-1">
-                     <Clock size={12} /> {activity.duration}
-                </div>
-                <div className="flex items-center gap-1">
-                     <Wallet size={12} /> {activity.costEstimate}
-                </div>
-            </div>
+            )}
         </div>
     );
 };
