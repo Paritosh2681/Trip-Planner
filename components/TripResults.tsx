@@ -94,7 +94,7 @@ const ActivityCard: React.FC<{
     const openDirections = (e: React.MouseEvent) => {
         e.stopPropagation();
         const { lat, lng } = activity.coordinates;
-        window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
+        window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank', 'noopener,noreferrer');
     };
 
     return (
@@ -511,7 +511,7 @@ const ActivityCard: React.FC<{
                     />
                 </div>
             )}
-        </div>
+        </article>
     );
 };
 
