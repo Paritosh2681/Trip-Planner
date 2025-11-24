@@ -23,25 +23,29 @@ interface MapProps {
 // Component to handle map movement/zoom
 const MapController: React.FC<{ activities: Activity[], activeId: string | null }> = ({ activities, activeId }) => {
   const map = useMap();
+  const initialFitDone = useRef(false);
 
   useEffect(() => {
     if (activities.length === 0) return;
 
-    // Calculate bounds to fit all markers
-    const bounds = L.latLngBounds(activities.map(a => [a.coordinates.lat, a.coordinates.lng]));
+    // Only fit bounds once on initial load
+    if (!initialFitDone.current && !activeId) {
+      const bounds = L.latLngBounds(activities.map(a => [a.coordinates.lat, a.coordinates.lng]));
+      map.fitBounds(bounds, { padding: [50, 50], animate: false, duration: 0 });
+      initialFitDone.current = true;
+      return;
+    }
     
     if (activeId) {
       const active = activities.find(a => a.id === activeId);
       if (active) {
         map.flyTo([active.coordinates.lat, active.coordinates.lng], 15, {
-          duration: 1.5,
+          duration: 0.8,
           easeLinearity: 0.25
         });
       }
-    } else {
-       map.fitBounds(bounds, { padding: [50, 50] });
     }
-  }, [activities, activeId, map]);
+  }, [activeId, map]); // Remove activities from dependencies to avoid re-fitting
 
   return null;
 };
@@ -82,8 +86,9 @@ const CustomMarker: React.FC<{ activity: Activity; isActive: boolean; onClick: (
 };
 
 const TripMap: React.FC<MapProps> = ({ trip, activeActivityId, onMarkerClick }) => {
-  const [isMapLoaded, setIsMapLoaded] = useState(true);
+  const [isMapLoaded, setIsMapLoaded] = useState(false);
   const allActivities = trip.schedule.flatMap(day => day.activities);
+  const mapRef = useRef<L.Map | null>(null);
 
   // Default center (will be overridden by MapController)
   const center = allActivities.length > 0 
@@ -108,16 +113,25 @@ const TripMap: React.FC<MapProps> = ({ trip, activeActivityId, onMarkerClick }) 
         style={{ height: '100%', width: '100%' }}
         zoomControl={false}
         preferCanvas={true}
-        whenReady={() => setIsMapLoaded(true)}
+        attributionControl={false}
+        whenReady={() => {
+          setIsMapLoaded(true);
+          if (mapRef.current) {
+            // Force a resize to ensure proper rendering
+            setTimeout(() => mapRef.current?.invalidateSize(), 100);
+          }
+        }}
+        ref={mapRef}
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-          maxZoom={19}
-          updateWhenIdle={false}
+          maxZoom={18}
+          updateWhenIdle={true}
           updateWhenZooming={false}
-          keepBuffer={4}
+          keepBuffer={2}
           minZoom={3}
+          tileSize={256}
         />
         <MapController activities={allActivities} activeId={activeActivityId} />
         
