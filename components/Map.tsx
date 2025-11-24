@@ -82,7 +82,7 @@ const CustomMarker: React.FC<{ activity: Activity; isActive: boolean; onClick: (
 };
 
 const TripMap: React.FC<MapProps> = ({ trip, activeActivityId, onMarkerClick }) => {
-  const [isMapLoaded, setIsMapLoaded] = useState(false);
+  const [isMapLoaded, setIsMapLoaded] = useState(true);
   const allActivities = trip.schedule.flatMap(day => day.activities);
 
   // Default center (will be overridden by MapController)
@@ -108,10 +108,7 @@ const TripMap: React.FC<MapProps> = ({ trip, activeActivityId, onMarkerClick }) 
         style={{ height: '100%', width: '100%' }}
         zoomControl={false}
         preferCanvas={true}
-        whenReady={() => {
-          // Set a small delay to ensure tiles are loaded
-          setTimeout(() => setIsMapLoaded(true), 300);
-        }}
+        whenReady={() => setIsMapLoaded(true)}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
@@ -119,7 +116,8 @@ const TripMap: React.FC<MapProps> = ({ trip, activeActivityId, onMarkerClick }) 
           maxZoom={19}
           updateWhenIdle={false}
           updateWhenZooming={false}
-          keepBuffer={2}
+          keepBuffer={4}
+          minZoom={3}
         />
         <MapController activities={allActivities} activeId={activeActivityId} />
         

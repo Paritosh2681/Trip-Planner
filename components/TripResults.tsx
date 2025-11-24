@@ -15,12 +15,15 @@ interface TripResultsProps {
 const ActivityCard: React.FC<{ 
     activity: Activity; 
     isActive: boolean; 
-    onClick: () => void; 
-}> = ({ activity, isActive, onClick }) => {
-    const [isExpanded, setIsExpanded] = useState(false);
+    onClick: () => void;
+    autoExpanded?: boolean;
+}> = ({ activity, isActive, onClick, autoExpanded = false }) => {
+    const [isExpanded, setIsExpanded] = useState(autoExpanded);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [imagesLoaded, setImagesLoaded] = useState(false);
+    const [addressCopied, setAddressCopied] = useState(false);
     const prefersReducedMotion = useRef(false);
+    const cardRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         // Check for reduced motion preference
@@ -28,11 +31,23 @@ const ActivityCard: React.FC<{
         prefersReducedMotion.current = mediaQuery.matches;
     }, []);
 
-    const handleCardClick = () => {
+    // Lock body scroll when lightbox is open
+    useEffect(() => {
+        if (selectedImage) {
+            document.body.style.overflow = 'hidden';
+            return () => {
+                document.body.style.overflow = '';
+            };
+        }
+    }, [selectedImage]);
+
+    const handleCardClick = (e: React.MouseEvent) => {
+        // Only trigger map marker click if clicking the card background, not interactive elements
+        if ((e.target as HTMLElement).closest('button, a, img')) return;
         onClick();
     };
 
-    const toggleExpand = (e: React.MouseEvent) => {
+    const toggleExpand = (e: React.MouseEvent | React.KeyboardEvent) => {
         e.stopPropagation();
         setIsExpanded(!isExpanded);
         // Lazy load images when expanding
@@ -44,30 +59,54 @@ const ActivityCard: React.FC<{
     const handleKeyPress = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            toggleExpand(e as any);
+            toggleExpand(e);
         }
     };
 
-    const copyAddress = (e: React.MouseEvent) => {
+    const copyAddress = async (e: React.MouseEvent) => {
         e.stopPropagation();
         if (activity.address) {
-            navigator.clipboard.writeText(activity.address);
+            try {
+                await navigator.clipboard.writeText(activity.address);
+                setAddressCopied(true);
+                setTimeout(() => setAddressCopied(false), 2000);
+            } catch (err) {
+                console.error('Failed to copy address:', err);
+            }
         }
+    };
+
+    const shareActivity = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: activity.title,
+                    text: activity.description,
+                    url: window.location.href
+                });
+            } catch (err) {
+                console.log('Share cancelled');
+            }
+        }
+    };
+
+    const openDirections = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        const { lat, lng } = activity.coordinates;
+        window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
     };
 
     return (
-        <div 
+        <article 
+            ref={cardRef}
             id={`activity-${activity.id}`}
-            role="button"
-            tabIndex={0}
-            aria-expanded={isExpanded}
-            onKeyDown={handleKeyPress}
             className={`
-                group relative border border-arch-line break-inside-avoid
-                ${isActive ? 'bg-neutral-50 border-black ring-1 ring-black shadow-lg' : 'hover:border-neutral-400 hover:bg-neutral-50 hover:-translate-y-1'}
+                group relative border border-arch-line break-inside-avoid bg-white
+                ${isActive ? 'border-black ring-1 ring-black shadow-lg' : 'hover:border-neutral-400 hover:shadow-md'}
+                ${!isExpanded && 'hover:-translate-y-1'}
                 ${prefersReducedMotion.current ? '' : 'transition-all duration-300'}
                 print:border print:shadow-none print:translate-y-0 print:p-4 print:mb-4
-                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2
             `}
         >
             {/* Timeline dot */}
@@ -77,15 +116,24 @@ const ActivityCard: React.FC<{
             ></div>
 
             {/* Compact header - always visible */}
-            <div className="p-5 cursor-pointer" onClick={handleCardClick}>
+            <div 
+                className="p-5 cursor-pointer"
+                onClick={handleCardClick}
+                role="button"
+                tabIndex={0}
+                aria-expanded={isExpanded}
+                onKeyDown={handleKeyPress}
+                aria-label={`${activity.title}, ${activity.time}`}
+            >
                 <div className="flex justify-between items-start mb-2">
                     <span className="font-mono text-xs text-neutral-500">{activity.time}</span>
                     <div className="flex items-center gap-2">
                         <span className="text-[10px] uppercase tracking-widest border border-neutral-200 px-2 py-0.5">{activity.type}</span>
                         <button 
                             onClick={toggleExpand}
-                            className="p-1 hover:bg-neutral-200 transition-colors print:hidden"
+                            className="p-1 hover:bg-neutral-200 transition-colors print:hidden focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2"
                             aria-label={isExpanded ? "Collapse details" : "Expand details"}
+                            type="button"
                         >
                             {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                         </button>
@@ -114,76 +162,111 @@ const ActivityCard: React.FC<{
             {/* Expanded content */}
             {isExpanded && (
                 <div 
-                    className={`border-t border-arch-line bg-white ${prefersReducedMotion.current ? '' : 'animate-in slide-in-from-top-2 duration-200'}`}
+                    className={`border-t border-arch-line bg-white overflow-hidden ${prefersReducedMotion.current ? '' : 'animate-in slide-in-from-top-2 duration-200'}`}
                     onClick={(e) => e.stopPropagation()}
+                    role="region"
+                    aria-label="Activity details"
                 >
                     {/* Close button */}
                     <div className="flex justify-end p-3 print:hidden">
                         <button 
                             onClick={toggleExpand}
-                            className="text-neutral-400 hover:text-black transition-colors"
+                            className="text-neutral-400 hover:text-black transition-colors focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 rounded-sm"
                             aria-label="Close details"
+                            type="button"
                         >
-                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                                 <line x1="12" y1="4" x2="4" y2="12"></line>
                                 <line x1="4" y1="4" x2="12" y2="12"></line>
                             </svg>
                         </button>
                     </div>
 
-                    <div className="px-5 pb-5 space-y-4">
+                    <div className="px-5 pb-5 space-y-4 max-h-[600px] overflow-y-auto">
                         {/* Image Gallery */}
-                        {activity.images && activity.images.length > 0 && imagesLoaded && (
-                            <div className="space-y-2">
+                        {activity.images && activity.images.length > 0 && imagesLoaded ? (
+                            <div className="space-y-2" role="img" aria-label="Activity photos">
                                 <img 
                                     src={activity.images[0]} 
-                                    alt={activity.title}
+                                    alt={`${activity.title} - main photo`}
                                     loading="lazy"
                                     onClick={() => setSelectedImage(activity.images![0])}
-                                    className="w-full h-48 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                    className="w-full h-48 object-cover cursor-pointer hover:opacity-90 transition-opacity border border-neutral-200"
+                                    onError={(e) => {
+                                        (e.target as HTMLImageElement).style.display = 'none';
+                                    }}
                                 />
                                 {activity.images.length > 1 && (
-                                    <div className="flex gap-2 overflow-x-auto">
+                                    <div className="flex gap-2 overflow-x-auto pb-2" role="list" aria-label="Additional photos">
                                         {activity.images.slice(1).map((img, idx) => (
                                             <img 
                                                 key={idx}
                                                 src={img}
-                                                alt={`${activity.title} ${idx + 2}`}
+                                                alt={`${activity.title} - photo ${idx + 2}`}
                                                 loading="lazy"
                                                 onClick={() => setSelectedImage(img)}
-                                                className="h-16 w-24 object-cover cursor-pointer hover:opacity-90 transition-opacity flex-shrink-0"
+                                                className="h-16 w-24 object-cover cursor-pointer hover:opacity-90 transition-opacity flex-shrink-0 border border-neutral-200"
+                                                role="listitem"
+                                                onError={(e) => {
+                                                    (e.target as HTMLImageElement).style.display = 'none';
+                                                }}
                                             />
                                         ))}
                                     </div>
                                 )}
                             </div>
-                        )}
+                        ) : !activity.images || activity.images.length === 0 ? (
+                            <div className="w-full h-48 bg-neutral-100 flex items-center justify-center border border-neutral-200">
+                                <div className="text-center text-neutral-400">
+                                    <MapPin size={32} className="mx-auto mb-2" />
+                                    <p className="text-xs uppercase tracking-widest">No images available</p>
+                                </div>
+                            </div>
+                        ) : null}
 
                         {/* Full Description */}
-                        {activity.fullDescription && (
+                        {activity.fullDescription ? (
                             <div>
-                                <h4 className="text-xs uppercase tracking-widest text-neutral-400 mb-2">Description</h4>
+                                <h4 className="text-xs uppercase tracking-widest text-neutral-400 mb-2 flex items-center gap-1">
+                                    <Info size={12} aria-hidden="true" /> Description
+                                </h4>
                                 <p className="text-sm text-neutral-700 leading-relaxed">{activity.fullDescription}</p>
+                            </div>
+                        ) : activity.description && (
+                            <div>
+                                <h4 className="text-xs uppercase tracking-widest text-neutral-400 mb-2 flex items-center gap-1">
+                                    <Info size={12} aria-hidden="true" /> Description
+                                </h4>
+                                <p className="text-sm text-neutral-700 leading-relaxed">{activity.description}</p>
                             </div>
                         )}
 
                         {/* Opening Hours */}
-                        {activity.openingHours && (
+                        {activity.openingHours ? (
                             <div>
-                                <h4 className="text-xs uppercase tracking-widest text-neutral-400 mb-2">Opening Hours</h4>
+                                <h4 className="text-xs uppercase tracking-widest text-neutral-400 mb-2 flex items-center gap-1">
+                                    <Clock size={12} aria-hidden="true" /> Opening Hours
+                                </h4>
                                 {activity.openingHours.today && (
-                                    <p className="text-sm font-medium mb-1">Today: {activity.openingHours.today}</p>
+                                    <p className="text-sm font-medium mb-2 text-neutral-900">Today: {activity.openingHours.today}</p>
                                 )}
-                                {activity.openingHours.weekly && (
-                                    <div className="text-xs text-neutral-600 space-y-0.5">
+                                {activity.openingHours.weekly && activity.openingHours.weekly.length > 0 && (
+                                    <div className="text-xs text-neutral-600 space-y-1 bg-neutral-50 p-3 border border-neutral-200">
                                         {activity.openingHours.weekly.map((day, idx) => (
-                                            <div key={idx} className="flex justify-between">
-                                                <span>{day.day}</span>
-                                                <span>{day.hours}</span>
+                                            <div key={idx} className="flex justify-between gap-4">
+                                                <span className="font-medium min-w-[70px]">{day.day}</span>
+                                                <span className="text-right">{day.hours}</span>
                                             </div>
                                         ))}
                                     </div>
                                 )}
+                            </div>
+                        ) : (
+                            <div>
+                                <h4 className="text-xs uppercase tracking-widest text-neutral-400 mb-2 flex items-center gap-1">
+                                    <Clock size={12} aria-hidden="true" /> Opening Hours
+                                </h4>
+                                <p className="text-sm text-neutral-500 italic">Opening hours not available</p>
                             </div>
                         )}
 
@@ -218,37 +301,71 @@ const ActivityCard: React.FC<{
                             </div>
                         )}
 
-                        {/* Address */}
-                        {activity.address && (
-                            <div>
-                                <h4 className="text-xs uppercase tracking-widest text-neutral-400 mb-1 flex items-center gap-1">
-                                    <MapPin size={12} /> Address
-                                </h4>
-                                <p className="text-sm text-neutral-700 mb-1">{activity.address}</p>
-                                <button 
-                                    onClick={copyAddress}
-                                    className="text-xs text-neutral-500 hover:text-black underline"
-                                >
-                                    Copy address
-                                </button>
-                            </div>
-                        )}
+                        {/* Location & Directions */}
+                        <div>
+                            <h4 className="text-xs uppercase tracking-widest text-neutral-400 mb-2 flex items-center gap-1">
+                                <MapPin size={12} aria-hidden="true" /> Location
+                            </h4>
+                            {activity.address ? (
+                                <>
+                                    <p className="text-sm text-neutral-700 mb-2">{activity.address}</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        <button 
+                                            onClick={copyAddress}
+                                            className="text-xs text-neutral-600 hover:text-black underline focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 rounded-sm"
+                                            type="button"
+                                            aria-label="Copy address to clipboard"
+                                        >
+                                            {addressCopied ? '✓ Copied!' : 'Copy address'}
+                                        </button>
+                                        <button 
+                                            onClick={openDirections}
+                                            className="text-xs text-neutral-600 hover:text-black underline focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 rounded-sm"
+                                            type="button"
+                                            aria-label="Open directions in Google Maps"
+                                        >
+                                            Get directions →
+                                        </button>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <p className="text-sm text-neutral-700 mb-2">{activity.locationName}</p>
+                                    <button 
+                                        onClick={openDirections}
+                                        className="text-xs text-neutral-600 hover:text-black underline focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 rounded-sm"
+                                        type="button"
+                                        aria-label="Open directions in Google Maps"
+                                    >
+                                        Get directions →
+                                    </button>
+                                </>
+                            )}
+                        </div>
 
                         {/* Transport to Next */}
                         {activity.transportToNext && (
-                            <div className="text-xs text-neutral-500 border-t border-neutral-200 pt-3">
-                                <span className="uppercase tracking-widest">Next: </span>
-                                {activity.transportToNext}
+                            <div className="bg-blue-50 border border-blue-200 p-3 text-sm text-neutral-700">
+                                <div className="flex items-start gap-2">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="flex-shrink-0 mt-0.5" aria-hidden="true">
+                                        <polyline points="9 18 15 12 9 6"></polyline>
+                                    </svg>
+                                    <div>
+                                        <span className="text-xs uppercase tracking-widest text-neutral-500 block mb-1">Next Activity</span>
+                                        <p>{activity.transportToNext}</p>
+                                    </div>
+                                </div>
                             </div>
                         )}
 
                         {/* Tags */}
                         {activity.tags && activity.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex flex-wrap gap-2" role="list" aria-label="Activity categories">
                                 {activity.tags.map((tag, idx) => (
                                     <span 
                                         key={idx}
-                                        className="text-[10px] uppercase tracking-widest border border-neutral-300 px-2 py-1"
+                                        role="listitem"
+                                        className="text-[10px] uppercase tracking-widest border border-neutral-300 bg-neutral-50 px-2 py-1"
                                     >
                                         {tag}
                                     </span>
@@ -257,25 +374,54 @@ const ActivityCard: React.FC<{
                         )}
 
                         {/* Actions */}
-                        <div className="flex flex-wrap gap-3 pt-3 border-t border-neutral-200 print:hidden">
-                            <button className="text-xs uppercase tracking-widest text-neutral-500 hover:text-black flex items-center gap-1">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
-                                </svg>
-                                Bookmark
+                        <div className="flex flex-wrap gap-3 pt-4 border-t border-neutral-200 print:hidden" role="toolbar" aria-label="Activity actions">
+                            <button 
+                                onClick={shareActivity}
+                                className="text-xs uppercase tracking-widest text-neutral-600 hover:text-black hover:bg-neutral-100 px-3 py-2 border border-neutral-300 transition-colors focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 flex items-center gap-2 min-h-[44px]"
+                                type="button"
+                                aria-label="Share activity"
+                            >
+                                <Share2 size={14} aria-hidden="true" />
+                                <span>Share</span>
                             </button>
-                            <button className="text-xs uppercase tracking-widest text-neutral-500 hover:text-black flex items-center gap-1">
-                                <Share2 size={14} />
-                                Share
-                            </button>
-                            <button className="text-xs uppercase tracking-widest text-neutral-500 hover:text-black flex items-center gap-1">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <button 
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    // Add to calendar logic
+                                    const event = {
+                                        title: activity.title,
+                                        description: activity.description,
+                                        location: activity.address || activity.locationName,
+                                        startTime: activity.time.split(' - ')[0],
+                                    };
+                                    console.log('Add to calendar:', event);
+                                }}
+                                className="text-xs uppercase tracking-widest text-neutral-600 hover:text-black hover:bg-neutral-100 px-3 py-2 border border-neutral-300 transition-colors focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 flex items-center gap-2 min-h-[44px]"
+                                type="button"
+                                aria-label="Add to calendar"
+                            >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                                     <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                                     <line x1="16" y1="2" x2="16" y2="6"></line>
                                     <line x1="8" y1="2" x2="8" y2="6"></line>
                                     <line x1="3" y1="10" x2="21" y2="10"></line>
                                 </svg>
-                                Add to Calendar
+                                <span>Calendar</span>
+                            </button>
+                            <button 
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    // Bookmark logic
+                                    console.log('Bookmark activity:', activity.id);
+                                }}
+                                className="text-xs uppercase tracking-widest text-neutral-600 hover:text-black hover:bg-neutral-100 px-3 py-2 border border-neutral-300 transition-colors focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 flex items-center gap-2 min-h-[44px]"
+                                type="button"
+                                aria-label="Bookmark activity"
+                            >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+                                </svg>
+                                <span>Save</span>
                             </button>
                         </div>
                     </div>
@@ -287,20 +433,79 @@ const ActivityCard: React.FC<{
                 <div 
                     className="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center p-4 animate-in fade-in duration-200"
                     onClick={() => setSelectedImage(null)}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Image viewer"
+                    onKeyDown={(e) => {
+                        if (e.key === 'Escape') setSelectedImage(null);
+                        if (activity.images && activity.images.length > 1) {
+                            const currentIndex = activity.images.indexOf(selectedImage);
+                            if (e.key === 'ArrowLeft' && currentIndex > 0) {
+                                setSelectedImage(activity.images[currentIndex - 1]);
+                            }
+                            if (e.key === 'ArrowRight' && currentIndex < activity.images.length - 1) {
+                                setSelectedImage(activity.images[currentIndex + 1]);
+                            }
+                        }
+                    }}
+                    tabIndex={0}
                 >
                     <button 
-                        className="absolute top-4 right-4 text-white hover:text-neutral-300"
+                        className="absolute top-4 right-4 text-white hover:text-neutral-300 focus:outline-none focus:ring-2 focus:ring-white rounded-sm p-2"
                         onClick={() => setSelectedImage(null)}
                         aria-label="Close lightbox"
+                        type="button"
                     >
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
                             <line x1="6" y1="6" x2="18" y2="18"></line>
                         </svg>
                     </button>
+                    
+                    {/* Navigation buttons for multiple images */}
+                    {activity.images && activity.images.length > 1 && (
+                        <>
+                            <button 
+                                className="absolute left-4 top-1/2 -translate-y-1/2 text-white hover:text-neutral-300 focus:outline-none focus:ring-2 focus:ring-white rounded-sm p-2 disabled:opacity-30 disabled:cursor-not-allowed"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    const currentIndex = activity.images!.indexOf(selectedImage);
+                                    if (currentIndex > 0) setSelectedImage(activity.images![currentIndex - 1]);
+                                }}
+                                disabled={activity.images.indexOf(selectedImage) === 0}
+                                aria-label="Previous image"
+                                type="button"
+                            >
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                                    <polyline points="15 18 9 12 15 6"></polyline>
+                                </svg>
+                            </button>
+                            <button 
+                                className="absolute right-4 top-1/2 -translate-y-1/2 text-white hover:text-neutral-300 focus:outline-none focus:ring-2 focus:ring-white rounded-sm p-2 disabled:opacity-30 disabled:cursor-not-allowed"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    const currentIndex = activity.images!.indexOf(selectedImage);
+                                    if (currentIndex < activity.images!.length - 1) setSelectedImage(activity.images![currentIndex + 1]);
+                                }}
+                                disabled={activity.images.indexOf(selectedImage) === activity.images.length - 1}
+                                aria-label="Next image"
+                                type="button"
+                            >
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                                    <polyline points="9 18 15 12 9 6"></polyline>
+                                </svg>
+                            </button>
+                            
+                            {/* Image counter */}
+                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white text-sm bg-black/50 px-3 py-1 rounded-full">
+                                {activity.images.indexOf(selectedImage) + 1} / {activity.images.length}
+                            </div>
+                        </>
+                    )}
+                    
                     <img 
                         src={selectedImage}
-                        alt="Full size"
+                        alt={`${activity.title} - Full size`}
                         className="max-w-full max-h-full object-contain"
                         onClick={(e) => e.stopPropagation()}
                     />
@@ -328,7 +533,7 @@ const DaySection: React.FC<{
         <div className="relative break-inside-avoid">
             {/* Sticky Header with Collapse Toggle */}
             <div 
-                className="sticky top-0 bg-white/95 backdrop-blur-sm py-4 border-b border-black mb-6 z-10 flex justify-between items-center cursor-pointer hover:bg-neutral-50 transition-colors print:static print:border-b-2"
+                className="sticky top-0 bg-white/95 backdrop-blur-sm py-2 border-b border-black mb-3 z-10 flex justify-between items-center cursor-pointer hover:bg-neutral-50 transition-colors print:static print:border-b-2"
                 onClick={() => setIsOpen(!isOpen)}
             >
                 <div className="flex items-baseline gap-4">
@@ -345,13 +550,14 @@ const DaySection: React.FC<{
 
             {/* Activities List */}
             {isOpen && (
-                <div className="space-y-6 border-l border-arch-line ml-3 md:ml-4 pl-8 md:pl-10 relative print:ml-0 print:pl-4 print:border-l-2 pb-12 animate-in slide-in-from-top-2 duration-300">
-                    {day.activities.map((activity) => (
+                <div className="space-y-3 border-l border-arch-line ml-3 md:ml-4 pl-8 md:pl-10 relative print:ml-0 print:pl-4 print:border-l-2 pb-6 animate-in slide-in-from-top-2 duration-300">
+                    {day.activities.map((activity, index) => (
                         <ActivityCard 
                             key={activity.id}
                             activity={activity}
                             isActive={activeActivityId === activity.id}
                             onClick={() => setActiveActivityId(activity.id)}
+                            autoExpanded={index === 0}
                         />
                     ))}
                 </div>
@@ -481,15 +687,12 @@ const TripResults: React.FC<TripResultsProps> = ({ trip, onReset }) => {
                 <div className="flex items-center gap-2 bg-neutral-100 px-3 py-1.5 rounded-none">
                     <Clock size={14} /> {trip.durationDays} Days
                 </div>
-                <div className="flex items-center gap-2 bg-neutral-100 px-3 py-1.5 rounded-none">
-                    <Wallet size={14} /> {trip.budget.total} ({trip.budget.currency})
-                </div>
             </div>
         </header>
 
         {/* Scrollable List - Fills remaining space - Auto overflow */}
         <div ref={scrollContainerRef} className="flex-1 overflow-y-auto bg-white min-h-0 print:overflow-visible print:h-auto scroll-smooth">
-            <div className="px-6 md:px-10 py-8 print:py-4 print:space-y-8">
+            <div className="px-6 md:px-10 print:py-4 print:space-y-8">
                 {trip.schedule.map((day) => (
                     <DaySection 
                         key={day.dayNumber}
