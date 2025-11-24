@@ -3,15 +3,21 @@ import { Trip } from "../types";
 
 // Ensure API Key is present
 const API_KEY = process.env.API_KEY || '';
+console.log('Service API_KEY check:', { 
+  hasKey: !!API_KEY, 
+  length: API_KEY?.length,
+  firstChars: API_KEY?.substring(0, 10)
+});
 
 const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 export const generateTripItinerary = async (destination: string, days: number): Promise<Trip> => {
   if (!API_KEY) {
+    console.error('API Key is missing!');
     throw new Error("Missing API Key");
   }
 
-  const model = "gemini-1.5-flash";
+  const model = "gemini-2.5-flash";
 
   const systemInstruction = `
     You are a world-class travel guide and itinerary planner. You create diverse, exciting, and well-balanced itineraries for general travelers.
@@ -28,7 +34,9 @@ export const generateTripItinerary = async (destination: string, days: number): 
     Your tone should be friendly, descriptive, and inviting—like a knowledgeable local sharing their favorite spots. 
     Avoid overly technical, academic, or dry language. Focus on the experience and atmosphere.
     
-    You must provide accurate latitude and longitude coordinates for every location.
+    CRITICAL: You must provide EXACT and PRECISE latitude and longitude coordinates (minimum 6 decimal places) for every location.
+    Use real coordinates for the actual entrance or main location of each place. Do not use approximate or city-center coordinates.
+    Example: For Taj Mahal, use {lat: 27.175015, lng: 78.042155} NOT {lat: 27.1751, lng: 78.0421}
     The output must be strictly valid JSON matching the schema provided.
   `;
 
@@ -77,9 +85,10 @@ export const generateTripItinerary = async (destination: string, days: number): 
                       coordinates: {
                         type: Type.OBJECT,
                         properties: {
-                          lat: { type: Type.NUMBER },
-                          lng: { type: Type.NUMBER }
-                        }
+                          lat: { type: Type.NUMBER, description: "Precise latitude with minimum 6 decimal places" },
+                          lng: { type: Type.NUMBER, description: "Precise longitude with minimum 6 decimal places" }
+                        },
+                        description: "Exact coordinates of the location entrance/main area, not city center"
                       },
                       duration: { type: Type.STRING },
                       costEstimate: { type: Type.STRING },
