@@ -11,7 +11,7 @@ export const generateTripItinerary = async (destination: string, days: number): 
     throw new Error("Missing API Key");
   }
 
-  const model = "gemini-2.5-flash";
+  const model = "gemini-1.5-flash";
 
   const systemInstruction = `
     You are a world-class travel guide and itinerary planner. You create diverse, exciting, and well-balanced itineraries for general travelers.
@@ -32,14 +32,7 @@ export const generateTripItinerary = async (destination: string, days: number): 
     The output must be strictly valid JSON matching the schema provided.
   `;
 
-  const prompt = `Plan a ${days}-day trip to ${destination} for a general traveler.
-  
-  Create a well-rounded itinerary that captures the true essence of the destination.
-  Ensure a balanced mix of activities each day (e.g., a museum in the morning, a park in the afternoon, a popular market for dinner).
-  Do not stack multiple architectural buildings in a row unless they are the primary fame of the city.
-  Include popular sightseeing spots, hidden gems, and local favorites.
-  Budget estimates should be realistic for a standard traveler.
-  `;
+  const prompt = `Plan a ${days}-day trip to ${destination}. Create a balanced itinerary with popular attractions, local experiences, and diverse activities. Keep it concise but informative.`;
 
   const response = await ai.models.generateContent({
     model,
@@ -93,41 +86,6 @@ export const generateTripItinerary = async (destination: string, days: number): 
                       type: { 
                         type: Type.STRING, 
                         enum: ["sightseeing", "nature", "culture", "food", "shopping", "entertainment", "relax", "transit"] 
-                      },
-                      images: {
-                        type: Type.ARRAY,
-                        items: { type: Type.STRING },
-                        description: "1-3 image URLs (use placeholder like 'https://source.unsplash.com/800x600/?[location],[title]' format)"
-                      },
-                      fullDescription: { 
-                        type: Type.STRING, 
-                        description: "Detailed 40-90 word travel-friendly description with atmosphere, why it's popular, what to expect." 
-                      },
-                      openingHours: {
-                        type: Type.OBJECT,
-                        properties: {
-                          today: { type: Type.STRING, description: "e.g., '9:00 AM - 6:00 PM' or 'Closed'" },
-                          weekly: {
-                            type: Type.ARRAY,
-                            items: {
-                              type: Type.OBJECT,
-                              properties: {
-                                day: { type: Type.STRING },
-                                hours: { type: Type.STRING }
-                              }
-                            }
-                          }
-                        }
-                      },
-                      suggestedDuration: { type: Type.STRING, description: "e.g., '60-90 minutes', '1.5-2 hours'" },
-                      ticketPrice: { type: Type.STRING, description: "e.g., 'Free', '$15-20', 'From $25'" },
-                      bestTimeToVisit: { type: Type.STRING, description: "1-2 line tip, e.g., 'Best at sunset', 'Avoid midday crowds'" },
-                      address: { type: Type.STRING, description: "Full street address" },
-                      transportToNext: { type: Type.STRING, description: "e.g., '10 min walk', '15 min by metro (Line 2)'" },
-                      tags: {
-                        type: Type.ARRAY,
-                        items: { type: Type.STRING },
-                        description: "2-4 relevant tags like 'Iconic', 'Photo Spot', 'Local Favorite', 'Historic'"
                       }
                     }
                   }
