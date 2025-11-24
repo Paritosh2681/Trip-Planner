@@ -1,0 +1,5 @@
+{
+  "name": "Architectural Trip Planner",
+  "description": "A handcrafted, portfolio-style trip planner powered by Gemini 2.5 Flash. Features sharp aesthetics, interactive mapping, and curated itineraries.",
+  "requestFramePermissions": []
+}
