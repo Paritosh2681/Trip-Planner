@@ -50,10 +50,20 @@ export const generateTripItinerary = async (destination: string, days: number): 
     
     INCORRECT (too vague): {lat: 27.17, lng: 78.04} or {lat: 27.175, lng: 78.042}
     
-    Each location MUST have unique, precise coordinates. The output must be strictly valid JSON matching the schema provided.
+    Each location MUST have unique, precise coordinates.
+    
+    ⚠️ OPENING HOURS REQUIREMENT ⚠️
+    You MUST provide accurate opening hours for EVERY location. Research and include:
+    - Actual operating hours for museums, attractions, restaurants, shops
+    - Day-specific hours if they vary (e.g., "Mon-Fri: 9 AM - 6 PM, Sat-Sun: 10 AM - 8 PM")
+    - Closed days (e.g., "Closed on Mondays")
+    - For outdoor/public spaces: "Open 24/7" or "Dawn to dusk"
+    - For restaurants: Include lunch/dinner hours or "Open daily: 11 AM - 11 PM"
+    
+    The output must be strictly valid JSON matching the schema provided.
   `;
 
-  const prompt = `Plan a ${days}-day trip to ${destination}. Create a balanced itinerary with popular attractions, local experiences, and diverse activities. Keep it concise but informative.`;
+  const prompt = `Plan a ${days}-day trip to ${destination}. Create a balanced itinerary with popular attractions, local experiences, and diverse activities. Include detailed information for each location including opening hours, ticket prices, full descriptions, and practical details. Keep descriptions engaging but informative.`;
 
   const response = await ai.models.generateContent({
     model,
@@ -108,6 +118,44 @@ export const generateTripItinerary = async (destination: string, days: number): 
                       type: { 
                         type: Type.STRING, 
                         enum: ["sightseeing", "nature", "culture", "food", "shopping", "entertainment", "relax", "transit"] 
+                      },
+                      images: { 
+                        type: Type.ARRAY, 
+                        items: { type: Type.STRING },
+                        description: "Array of 2-4 high-quality image URLs for this location (if available)"
+                      },
+                      fullDescription: { 
+                        type: Type.STRING, 
+                        description: "Detailed 3-4 sentence description about what makes this place special and what visitors can expect"
+                      },
+                      openingHours: { 
+                        type: Type.STRING, 
+                        description: "REQUIRED: Operating hours for the location (e.g., 'Mon-Sun: 9:00 AM - 6:00 PM' or '24/7' or 'Tue-Sun: 10:00 AM - 5:00 PM, Closed Monday'). Research actual opening hours for each specific location."
+                      },
+                      suggestedDuration: { 
+                        type: Type.STRING, 
+                        description: "Recommended time to spend at this location (e.g., '2-3 hours', '30-45 minutes')"
+                      },
+                      ticketPrice: { 
+                        type: Type.STRING, 
+                        description: "Entry fee or ticket price range (e.g., '$15-25', 'Free', '₹500', 'Adults: $20, Children: $10')"
+                      },
+                      bestTimeToVisit: { 
+                        type: Type.STRING, 
+                        description: "Best time of day or season to visit this location (e.g., 'Early morning for fewer crowds', 'Sunset for best views')"
+                      },
+                      address: { 
+                        type: Type.STRING, 
+                        description: "Full street address of the location for accurate directions"
+                      },
+                      transportToNext: { 
+                        type: Type.STRING, 
+                        description: "How to get to the next activity (e.g., '10-min walk', 'Take metro Line 2', '15-min taxi ride')"
+                      },
+                      tags: { 
+                        type: Type.ARRAY, 
+                        items: { type: Type.STRING },
+                        description: "2-4 relevant tags (e.g., ['Family-Friendly', 'Photo Spot', 'Historical', 'Local Favorite'])"
                       }
                     }
                   }
