@@ -94,7 +94,11 @@ const ActivityCard: React.FC<{
     const openDirections = (e: React.MouseEvent) => {
         e.stopPropagation();
         const { lat, lng } = activity.coordinates;
-        window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank', 'noopener,noreferrer');
+        // Use address if available for better accuracy, otherwise use coordinates
+        const destination = activity.address 
+            ? encodeURIComponent(activity.address)
+            : `${lat},${lng}`;
+        window.open(`https://www.google.com/maps/search/?api=1&query=${destination}`, '_blank', 'noopener,noreferrer');
     };
 
     return (
