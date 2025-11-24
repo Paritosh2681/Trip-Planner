@@ -34,16 +34,20 @@ const ActivityCard: React.FC<{
     // Lock body scroll when lightbox is open
     useEffect(() => {
         if (selectedImage) {
+            const originalOverflow = document.body.style.overflow;
             document.body.style.overflow = 'hidden';
             return () => {
-                document.body.style.overflow = '';
+                document.body.style.overflow = originalOverflow;
             };
         }
     }, [selectedImage]);
 
     const handleCardClick = (e: React.MouseEvent) => {
         // Only trigger map marker click if clicking the card background, not interactive elements
-        if ((e.target as HTMLElement).closest('button, a, img')) return;
+        const target = e.target as HTMLElement;
+        if (target.closest('button, a, img, input, textarea')) return;
+        // Don't trigger if clicking inside the expanded content section
+        if (isExpanded && target.closest('[role="region"]')) return;
         onClick();
     };
 
