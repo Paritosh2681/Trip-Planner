@@ -2,7 +2,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { Trip } from "../types";
 
 // Ensure API Key is present
-const API_KEY = process.env.API_KEY || '';
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 console.log('Service API_KEY check:', { 
   hasKey: !!API_KEY, 
   length: API_KEY?.length,
