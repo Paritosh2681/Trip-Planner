@@ -167,16 +167,13 @@ RESPOND WITH VALID JSON ONLY. Use this exact structure:
   ];
 
   try {
-    const response = await sdk.model("google/gemini-3-pro-preview").run({
-      messages,
-      content: prompt
-    });
+    const response = await sdk.model("google/gemini-3-pro-preview").run(messages);
 
-    if (!response || !response.output) {
+    if (!response || !response.content) {
       throw new Error("No response from AI");
     }
 
-    const trip = JSON.parse(response.output) as Trip;
+    const trip = JSON.parse(response.content) as Trip;
   
     // Post-process to fix title/description swap if AI got it wrong
     trip.schedule.forEach(day => {
