@@ -1,23 +1,21 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import Bytez from "bytez.js";
 import { Trip } from "../types";
 
 // Ensure API Key is present
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
+const API_KEY = import.meta.env.VITE_BYTEZ_API_KEY || '';
 console.log('Service API_KEY check:', { 
   hasKey: !!API_KEY, 
   length: API_KEY?.length,
   firstChars: API_KEY?.substring(0, 10)
 });
 
-const ai = new GoogleGenAI({ apiKey: API_KEY });
+const sdk = new Bytez(API_KEY);
 
 export const generateTripItinerary = async (destination: string, days: number): Promise<Trip> => {
   if (!API_KEY) {
     console.error('API Key is missing!');
     throw new Error("Missing API Key");
   }
-
-  const model = "gemini-2.5-flash";
 
   const systemInstruction = `
     You are a world-class travel guide and itinerary planner. You create diverse, exciting, and well-balanced itineraries for general travelers.
@@ -119,149 +117,94 @@ You MUST look up and provide the EXACT, REAL GPS coordinates for each specific l
 - Coordinates MUST have exactly 8 decimal places
 - Example: If planning "Chhatrapati Shivaji Maharaj Vastu Sangrahalaya", you MUST use its exact coordinates {lat: 18.92685400, lng: 72.83238500}, NOT Mumbai city center coordinates
 
-Include detailed information for each location: opening hours, ticket prices, full descriptions, and practical details.`;
+Include detailed information for each location: opening hours, ticket prices, full descriptions, and practical details.
 
-  const response = await ai.models.generateContent({
-    model,
-    contents: prompt,
-    config: {
-      systemInstruction,
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          destination: { type: Type.STRING },
-          durationDays: { type: Type.INTEGER },
-          summary: { type: Type.STRING, description: "An engaging, traveler-friendly 2-sentence summary of the trip vibe." },
-          bestTimeToVisit: { type: Type.STRING },
-          budget: {
-            type: Type.OBJECT,
-            properties: {
-              accommodation: { type: Type.STRING },
-              food: { type: Type.STRING },
-              activities: { type: Type.STRING },
-              total: { type: Type.STRING },
-              currency: { type: Type.STRING },
-            }
-          },
-          schedule: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                dayNumber: { type: Type.INTEGER },
-                theme: { type: Type.STRING, description: "A short, catchy theme title for the day (e.g., 'Historical Wonders & Street Food')" },
-                activities: {
-                  type: Type.ARRAY,
-                  items: {
-                    type: Type.OBJECT,
-                    properties: {
-                      id: { type: Type.STRING, description: "Unique ID (e.g., 'd1-a1')" },
-                      time: { type: Type.STRING, description: "e.g., '09:00 - 11:30'" },
-                      locationName: { 
-                        type: Type.STRING, 
-                        description: "The name of the location/place. Keep it short and simple (2-8 words). Examples: 'Chhatrapati Shivaji Maharaj Vastu Sangrahalaya', 'Gateway of India', 'Marine Drive', 'Elephanta Caves'. Just the name, nothing else."
-                      },
-                      title: { 
-                        type: Type.STRING, 
-                        description: "MUST BE IDENTICAL TO locationName. Copy the exact same value from locationName. This ensures the place name appears correctly."
-                      },
-                      description: { 
-                        type: Type.STRING, 
-                        description: "A descriptive sentence about what visitors experience (20-30 words). Example: 'Mumbai's premier museum, showcasing vast collections of Indian art, archaeology, and natural history in a stunning Indo-Saracenic building.' This is DIFFERENT from locationName/title."
-                      },
-                      coordinates: {
-                        type: Type.OBJECT,
-                        properties: {
-                          lat: { type: Type.NUMBER, description: "CRITICAL - MUST BE EXACT: Look up the REAL GPS coordinates for this specific location. EXACTLY 8 decimal places required (e.g., 18.92685400 for CSMVS Museum, NOT 18.9268 or 19.0000). You MUST research the actual coordinates, do NOT estimate or use city center. Each location needs UNIQUE coordinates." },
-                          lng: { type: Type.NUMBER, description: "CRITICAL - MUST BE EXACT: Look up the REAL GPS coordinates for this specific location. EXACTLY 8 decimal places required (e.g., 72.83238500 for CSMVS Museum, NOT 72.8323 or 72.0000). You MUST research the actual coordinates, do NOT estimate or use city center. Each location needs UNIQUE coordinates." }
-                        },
-                        description: "CRITICAL REQUIREMENT: Must be the EXACT, VERIFIED GPS coordinates from real maps/databases. NEVER use approximations. Examples: CSMVS Museum Mumbai {lat: 18.92685400, lng: 72.83238500}, Gateway of India {lat: 18.92197500, lng: 72.83463100}, Taj Mahal {lat: 27.17500600, lng: 78.04215500}. Each location MUST have unique coordinates verified from actual geographic data."
-                      },
-                      duration: { type: Type.STRING },
-                      costEstimate: { type: Type.STRING },
-                      type: { 
-                        type: Type.STRING, 
-                        enum: ["sightseeing", "nature", "culture", "food", "shopping", "entertainment", "relax", "transit"] 
-                      },
-                      images: { 
-                        type: Type.ARRAY, 
-                        items: { type: Type.STRING },
-                        description: "Array of 2-4 high-quality image URLs for this location (if available)"
-                      },
-                      fullDescription: { 
-                        type: Type.STRING, 
-                        description: "Detailed 3-4 sentence description about what makes this place special and what visitors can expect"
-                      },
-                      openingHours: { 
-                        type: Type.STRING, 
-                        description: "REQUIRED: Operating hours for the location (e.g., 'Mon-Sun: 9:00 AM - 6:00 PM' or '24/7' or 'Tue-Sun: 10:00 AM - 5:00 PM, Closed Monday'). Research actual opening hours for each specific location."
-                      },
-                      suggestedDuration: { 
-                        type: Type.STRING, 
-                        description: "Recommended time to spend at this location (e.g., '2-3 hours', '30-45 minutes')"
-                      },
-                      ticketPrice: { 
-                        type: Type.STRING, 
-                        description: "Entry fee or ticket price range (e.g., '$15-25', 'Free', '₹500', 'Adults: $20, Children: $10')"
-                      },
-                      bestTimeToVisit: { 
-                        type: Type.STRING, 
-                        description: "Best time of day or season to visit this location (e.g., 'Early morning for fewer crowds', 'Sunset for best views')"
-                      },
-                      address: { 
-                        type: Type.STRING, 
-                        description: "Full street address of the location for accurate directions"
-                      },
-                      transportToNext: { 
-                        type: Type.STRING, 
-                        description: "How to get to the next activity (e.g., '10-min walk', 'Take metro Line 2', '15-min taxi ride')"
-                      },
-                      tags: { 
-                        type: Type.ARRAY, 
-                        items: { type: Type.STRING },
-                        description: "2-4 relevant tags (e.g., ['Family-Friendly', 'Photo Spot', 'Historical', 'Local Favorite'])"
-                      }
-                    }
-                  }
-                }
-              }
-            }
+RESPOND WITH VALID JSON ONLY. Use this exact structure:
+{
+  "destination": "string",
+  "durationDays": number,
+  "summary": "string",
+  "bestTimeToVisit": "string",
+  "budget": {
+    "accommodation": "string",
+    "food": "string",
+    "activities": "string",
+    "total": "string",
+    "currency": "string"
+  },
+  "schedule": [
+    {
+      "dayNumber": number,
+      "theme": "string",
+      "activities": [
+        {
+          "id": "string",
+          "time": "string",
+          "locationName": "string",
+          "title": "string (same as locationName)",
+          "description": "string",
+          "coordinates": {"lat": number, "lng": number},
+          "duration": "string",
+          "costEstimate": "string",
+          "type": "sightseeing|nature|culture|food|shopping|entertainment|relax|transit",
+          "images": ["string"],
+          "fullDescription": "string",
+          "openingHours": "string",
+          "suggestedDuration": "string",
+          "ticketPrice": "string",
+          "bestTimeToVisit": "string",
+          "address": "string",
+          "transportToNext": "string",
+          "tags": ["string"]
+        }
+      ]
+    }
+  ]
+}`;
+
+  const messages = [
+    { role: "user", content: systemInstruction + "\n\n" + prompt }
+  ];
+
+  try {
+    const response = await sdk.model("google/gemini-3-pro-preview").run({
+      messages,
+      content: prompt
+    });
+
+    if (!response || !response.output) {
+      throw new Error("No response from AI");
+    }
+
+    const trip = JSON.parse(response.output) as Trip;
+  
+    // Post-process to fix title/description swap if AI got it wrong
+    trip.schedule.forEach(day => {
+      day.activities.forEach(activity => {
+        // If title is longer than 50 chars or description is shorter than 15 chars, they're likely swapped
+        if (activity.title && activity.description) {
+          const titleIsLong = activity.title.length > 50;
+          const descIsShort = activity.description.length < 15;
+          const titleHasCommas = activity.title.includes(',');
+          
+          // Swap if title looks like a description
+          if (titleIsLong || (titleHasCommas && descIsShort)) {
+            const temp = activity.title;
+            activity.title = activity.description;
+            activity.description = temp;
           }
         }
-      }
-    }
-  });
-
-  if (!response.text) {
-    throw new Error("No response from AI");
-  }
-
-  const trip = JSON.parse(response.text) as Trip;
-  
-  // Post-process to fix title/description swap if AI got it wrong
-  trip.schedule.forEach(day => {
-    day.activities.forEach(activity => {
-      // If title is longer than 50 chars or description is shorter than 15 chars, they're likely swapped
-      if (activity.title && activity.description) {
-        const titleIsLong = activity.title.length > 50;
-        const descIsShort = activity.description.length < 15;
-        const titleHasCommas = activity.title.includes(',');
         
-        // Swap if title looks like a description
-        if (titleIsLong || (titleHasCommas && descIsShort)) {
-          const temp = activity.title;
-          activity.title = activity.description;
-          activity.description = temp;
+        // Ensure title has a value - use locationName as fallback
+        if (!activity.title || activity.title.trim() === '') {
+          activity.title = activity.locationName || 'Unknown Location';
         }
-      }
-      
-      // Ensure title has a value - use locationName as fallback
-      if (!activity.title || activity.title.trim() === '') {
-        activity.title = activity.locationName || 'Unknown Location';
-      }
+      });
     });
-  });
 
-  return trip;
+    return trip;
+  } catch (error) {
+    console.error('Bytez API Error:', error);
+    throw new Error("Unable to design your trip at this moment. Please check your API configuration.");
+  }
 };
