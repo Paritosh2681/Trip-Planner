@@ -162,13 +162,14 @@ RESPOND WITH VALID JSON ONLY. Use this exact structure:
   ]
 }`;
 
-  const messages = [
-    { role: "user", content: systemInstruction + "\n\n" + prompt }
-  ];
+  const fullPrompt = systemInstruction + "\n\n" + prompt;
 
   try {
-    const model = sdk.model("google/gemini-3-pro-preview");
-    const response = await model.run(prompt);
+    const response = await sdk.model("google/gemini-3-pro-preview").run({
+      messages: [
+        { role: "user", content: fullPrompt }
+      ]
+    });
 
     console.log('Bytez Response:', response);
     console.log('Response type:', typeof response);
