@@ -171,6 +171,8 @@ RESPOND WITH VALID JSON ONLY. Use this exact structure:
     const response = await model.run(prompt);
 
     console.log('Bytez Response:', response);
+    console.log('Response type:', typeof response);
+    console.log('Response keys:', response ? Object.keys(response) : 'null');
 
     if (!response) {
       console.error('Invalid response:', response);
@@ -182,13 +184,27 @@ RESPOND WITH VALID JSON ONLY. Use this exact structure:
     if (typeof response === 'string') {
       tripData = JSON.parse(response);
     } else if (response.content) {
+      console.log('Using response.content:', response.content);
       tripData = typeof response.content === 'string' ? JSON.parse(response.content) : response.content;
     } else if (response.output) {
+      console.log('Using response.output:', response.output);
       tripData = typeof response.output === 'string' ? JSON.parse(response.output) : response.output;
     } else if (response.text) {
+      console.log('Using response.text:', response.text);
       tripData = typeof response.text === 'string' ? JSON.parse(response.text) : response.text;
+    } else if (response.message) {
+      console.log('Using response.message:', response.message);
+      tripData = typeof response.message === 'string' ? JSON.parse(response.message) : response.message;
     } else {
+      console.log('Using response directly:', response);
       tripData = response;
+    }
+
+    console.log('Trip data:', tripData);
+    console.log('Trip data schedule:', tripData?.schedule);
+
+    if (!tripData || !tripData.schedule) {
+      throw new Error("Invalid trip data structure received from API");
     }
 
     const trip = tripData as Trip;
