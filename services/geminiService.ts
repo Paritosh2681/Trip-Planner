@@ -237,5 +237,31 @@ Include detailed information for each location: opening hours, ticket prices, fu
     throw new Error("No response from AI");
   }
 
-  return JSON.parse(response.text) as Trip;
+  const trip = JSON.parse(response.text) as Trip;
+  
+  // Post-process to fix title/description swap if AI got it wrong
+  trip.schedule.forEach(day => {
+    day.activities.forEach(activity => {
+      // If title is longer than 50 chars or description is shorter than 15 chars, they're likely swapped
+      if (activity.title && activity.description) {
+        const titleIsLong = activity.title.length > 50;
+        const descIsShort = activity.description.length < 15;
+        const titleHasCommas = activity.title.includes(',');
+        
+        // Swap if title looks like a description
+        if (titleIsLong || (titleHasCommas && descIsShort)) {
+          const temp = activity.title;
+          activity.title = activity.description;
+          activity.description = temp;
+        }
+      }
+      
+      // Ensure title has a value - use locationName as fallback
+      if (!activity.title || activity.title.trim() === '') {
+        activity.title = activity.locationName || 'Unknown Location';
+      }
+    });
+  });
+
+  return trip;
 };
