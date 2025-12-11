@@ -173,6 +173,8 @@ RESPOND WITH VALID JSON ONLY. Use this exact structure:
     console.log('Bytez Response:', response);
     console.log('Response type:', typeof response);
     console.log('Is Array:', Array.isArray(response));
+    console.log('Response keys:', response ? Object.keys(response) : 'null');
+    console.log('Response stringified:', JSON.stringify(response, null, 2));
 
     if (!response) {
       console.error('Invalid response:', response);
@@ -182,42 +184,50 @@ RESPOND WITH VALID JSON ONLY. Use this exact structure:
     // Handle different response formats
     let tripData;
     
-    // Bytez returns an array, we need the content from it
-    if (Array.isArray(response)) {
+    // Check all possible properties
+    if (response.data) {
+      console.log('Using response.data');
+      tripData = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+    } else if (response.result) {
+      console.log('Using response.result');
+      tripData = typeof response.result === 'string' ? JSON.parse(response.result) : response.result;
+    } else if (response.choices && response.choices[0]) {
+      console.log('Using response.choices[0].message.content');
+      const content = response.choices[0].message?.content || response.choices[0].text;
+      tripData = typeof content === 'string' ? JSON.parse(content) : content;
+    } else if (Array.isArray(response)) {
       console.log('Response is array, length:', response.length);
-      // Try to find the content in the array
       const contentItem = response.find(item => item?.content || item?.text || item?.output);
       if (contentItem) {
         const rawContent = contentItem.content || contentItem.text || contentItem.output;
-        console.log('Found content:', rawContent);
         tripData = typeof rawContent === 'string' ? JSON.parse(rawContent) : rawContent;
       } else {
-        // If no content found, try last element
         const lastItem = response[response.length - 1];
-        console.log('Using last array element:', lastItem);
         tripData = typeof lastItem === 'string' ? JSON.parse(lastItem) : lastItem;
       }
     } else if (typeof response === 'string') {
       tripData = JSON.parse(response);
     } else if (response.content) {
-      console.log('Using response.content:', response.content);
+      console.log('Using response.content');
       tripData = typeof response.content === 'string' ? JSON.parse(response.content) : response.content;
     } else if (response.output) {
-      console.log('Using response.output:', response.output);
+      console.log('Using response.output');
       tripData = typeof response.output === 'string' ? JSON.parse(response.output) : response.output;
     } else if (response.text) {
-      console.log('Using response.text:', response.text);
+      console.log('Using response.text');
       tripData = typeof response.text === 'string' ? JSON.parse(response.text) : response.text;
     } else {
-      console.log('Using response directly:', response);
+      console.log('Using response directly');
       tripData = response;
     }
 
     console.log('Trip data:', tripData);
+    console.log('Trip data keys:', tripData ? Object.keys(tripData) : 'null');
     console.log('Trip data schedule:', tripData?.schedule);
 
     if (!tripData || !tripData.schedule) {
-      throw new Error("Invalid trip data structure received from API");
+      console.error('Invalid structure - tripData:', tripData);
+      throw new Error("Invalid trip data structure received from API. Response does not contain schedule data.");
     }
 
     const trip = tripData as Trip;
