@@ -1,15 +1,15 @@
-import Bytez from "bytez.js";
+import { GoogleGenAI, Type } from "@google/genai";
 import { Trip } from "../types";
 
 // Ensure API Key is present
-const API_KEY = import.meta.env.VITE_BYTEZ_API_KEY || '';
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 console.log('Service API_KEY check:', { 
   hasKey: !!API_KEY, 
   length: API_KEY?.length,
   firstChars: API_KEY?.substring(0, 10)
 });
 
-const sdk = new Bytez(API_KEY);
+const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 export const generateTripItinerary = async (destination: string, days: number): Promise<Trip> => {
   if (!API_KEY) {
@@ -117,121 +117,86 @@ You MUST look up and provide the EXACT, REAL GPS coordinates for each specific l
 - Coordinates MUST have exactly 8 decimal places
 - Example: If planning "Chhatrapati Shivaji Maharaj Vastu Sangrahalaya", you MUST use its exact coordinates {lat: 18.92685400, lng: 72.83238500}, NOT Mumbai city center coordinates
 
-Include detailed information for each location: opening hours, ticket prices, full descriptions, and practical details.
+Include detailed information for each location: opening hours, ticket prices, full descriptions, and practical details.`;
 
-RESPOND WITH VALID JSON ONLY. Use this exact structure:
-{
-  "destination": "string",
-  "durationDays": number,
-  "summary": "string",
-  "bestTimeToVisit": "string",
-  "budget": {
-    "accommodation": "string",
-    "food": "string",
-    "activities": "string",
-    "total": "string",
-    "currency": "string"
-  },
-  "schedule": [
-    {
-      "dayNumber": number,
-      "theme": "string",
-      "activities": [
-        {
-          "id": "string",
-          "time": "string",
-          "locationName": "string",
-          "title": "string (same as locationName)",
-          "description": "string",
-          "coordinates": {"lat": number, "lng": number},
-          "duration": "string",
-          "costEstimate": "string",
-          "type": "sightseeing|nature|culture|food|shopping|entertainment|relax|transit",
-          "images": ["string"],
-          "fullDescription": "string",
-          "openingHours": "string",
-          "suggestedDuration": "string",
-          "ticketPrice": "string",
-          "bestTimeToVisit": "string",
-          "address": "string",
-          "transportToNext": "string",
-          "tags": ["string"]
-        }
-      ]
-    }
-  ]
-}`;
-
-  const fullPrompt = systemInstruction + "\n\n" + prompt;
+  const model = "gemini-2.5-flash";
 
   try {
-    const response = await sdk.model("google/gemini-3-pro-preview").run({
-      messages: [
-        { role: "user", content: fullPrompt }
-      ]
+    const response = await ai.models.generateContent({
+      model,
+      contents: prompt,
+      config: {
+        systemInstruction,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            destination: { type: Type.STRING },
+            durationDays: { type: Type.INTEGER },
+            summary: { type: Type.STRING },
+            bestTimeToVisit: { type: Type.STRING },
+            budget: {
+              type: Type.OBJECT,
+              properties: {
+                accommodation: { type: Type.STRING },
+                food: { type: Type.STRING },
+                activities: { type: Type.STRING },
+                total: { type: Type.STRING },
+                currency: { type: Type.STRING },
+              }
+            },
+            schedule: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  dayNumber: { type: Type.INTEGER },
+                  theme: { type: Type.STRING },
+                  activities: {
+                    type: Type.ARRAY,
+                    items: {
+                      type: Type.OBJECT,
+                      properties: {
+                        id: { type: Type.STRING },
+                        time: { type: Type.STRING },
+                        locationName: { type: Type.STRING },
+                        title: { type: Type.STRING },
+                        description: { type: Type.STRING },
+                        coordinates: {
+                          type: Type.OBJECT,
+                          properties: {
+                            lat: { type: Type.NUMBER },
+                            lng: { type: Type.NUMBER }
+                          }
+                        },
+                        duration: { type: Type.STRING },
+                        costEstimate: { type: Type.STRING },
+                        type: { type: Type.STRING },
+                        images: { type: Type.ARRAY, items: { type: Type.STRING } },
+                        fullDescription: { type: Type.STRING },
+                        openingHours: { type: Type.STRING },
+                        suggestedDuration: { type: Type.STRING },
+                        ticketPrice: { type: Type.STRING },
+                        bestTimeToVisit: { type: Type.STRING },
+                        address: { type: Type.STRING },
+                        transportToNext: { type: Type.STRING },
+                        tags: { type: Type.ARRAY, items: { type: Type.STRING } }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     });
 
-    console.log('Bytez Response:', response);
-    console.log('Response type:', typeof response);
-    console.log('Is Array:', Array.isArray(response));
-    console.log('Response keys:', response ? Object.keys(response) : 'null');
-    console.log('Response stringified:', JSON.stringify(response, null, 2));
-
-    if (!response) {
-      console.error('Invalid response:', response);
+    if (!response.text) {
       throw new Error("No response from AI");
     }
 
-    // Handle different response formats
-    let tripData;
-    
-    // Check all possible properties
-    if (response.data) {
-      console.log('Using response.data');
-      tripData = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
-    } else if (response.result) {
-      console.log('Using response.result');
-      tripData = typeof response.result === 'string' ? JSON.parse(response.result) : response.result;
-    } else if (response.choices && response.choices[0]) {
-      console.log('Using response.choices[0].message.content');
-      const content = response.choices[0].message?.content || response.choices[0].text;
-      tripData = typeof content === 'string' ? JSON.parse(content) : content;
-    } else if (Array.isArray(response)) {
-      console.log('Response is array, length:', response.length);
-      const contentItem = response.find(item => item?.content || item?.text || item?.output);
-      if (contentItem) {
-        const rawContent = contentItem.content || contentItem.text || contentItem.output;
-        tripData = typeof rawContent === 'string' ? JSON.parse(rawContent) : rawContent;
-      } else {
-        const lastItem = response[response.length - 1];
-        tripData = typeof lastItem === 'string' ? JSON.parse(lastItem) : lastItem;
-      }
-    } else if (typeof response === 'string') {
-      tripData = JSON.parse(response);
-    } else if (response.content) {
-      console.log('Using response.content');
-      tripData = typeof response.content === 'string' ? JSON.parse(response.content) : response.content;
-    } else if (response.output) {
-      console.log('Using response.output');
-      tripData = typeof response.output === 'string' ? JSON.parse(response.output) : response.output;
-    } else if (response.text) {
-      console.log('Using response.text');
-      tripData = typeof response.text === 'string' ? JSON.parse(response.text) : response.text;
-    } else {
-      console.log('Using response directly');
-      tripData = response;
-    }
-
-    console.log('Trip data:', tripData);
-    console.log('Trip data keys:', tripData ? Object.keys(tripData) : 'null');
-    console.log('Trip data schedule:', tripData?.schedule);
-
-    if (!tripData || !tripData.schedule) {
-      console.error('Invalid structure - tripData:', tripData);
-      throw new Error("Invalid trip data structure received from API. Response does not contain schedule data.");
-    }
-
-    const trip = tripData as Trip;
+    const trip = JSON.parse(response.text) as Trip;
   
     // Post-process to fix title/description swap if AI got it wrong
     trip.schedule.forEach(day => {
@@ -259,7 +224,7 @@ RESPOND WITH VALID JSON ONLY. Use this exact structure:
 
     return trip;
   } catch (error) {
-    console.error('Bytez API Error:', error);
+    console.error('Gemini API Error:', error);
     throw new Error("Unable to design your trip at this moment. Please check your API configuration.");
   }
 };
