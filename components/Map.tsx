@@ -156,6 +156,13 @@ const TripMap: React.FC<MapProps> = ({ trip, activeActivityId, onMarkerClick }) 
           />
         ))}
       </MapContainer>
+
+      {/* Location accuracy disclaimer */}
+      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-[1000] pointer-events-none">
+        <div className="bg-[#fffef0]/80 backdrop-blur-sm px-3 py-1.5 rounded-lg text-xs text-neutral-600">
+          Location may not be accurate
+        </div>
+      </div>
     </div>
   );
 };
