@@ -167,16 +167,19 @@ RESPOND WITH VALID JSON ONLY. Use this exact structure:
   ];
 
   try {
-    const response = await sdk.model("google/gemini-3-pro-preview").chat(messages);
+    const model = sdk.model("google/gemini-3-pro-preview");
+    const response = await model.run(prompt);
 
     console.log('Bytez Response:', response);
 
-    if (!response || !response.content) {
-      console.error('Invalid response structure:', response);
+    if (!response) {
+      console.error('Invalid response:', response);
       throw new Error("No response from AI");
     }
 
-    const trip = JSON.parse(response.content) as Trip;
+    // Try different possible response formats
+    const responseText = response.content || response.output || response.text || response;
+    const trip = JSON.parse(responseText) as Trip;
   
     // Post-process to fix title/description swap if AI got it wrong
     trip.schedule.forEach(day => {
