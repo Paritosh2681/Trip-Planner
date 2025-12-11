@@ -167,9 +167,12 @@ RESPOND WITH VALID JSON ONLY. Use this exact structure:
   ];
 
   try {
-    const response = await sdk.model("google/gemini-3-pro-preview").run(messages);
+    const response = await sdk.model("google/gemini-3-pro-preview").chat(messages);
+
+    console.log('Bytez Response:', response);
 
     if (!response || !response.content) {
+      console.error('Invalid response structure:', response);
       throw new Error("No response from AI");
     }
 
