@@ -223,8 +223,18 @@ Include detailed information for each location: opening hours, ticket prices, fu
     });
 
     return trip;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Gemini API Error:', error);
+    
+    // Check if it's a quota/rate limit error
+    if (error?.message?.includes('RESOURCE_EXHAUSTED') || 
+        error?.message?.includes('quota') || 
+        error?.message?.includes('429') ||
+        error?.status === 429) {
+      throw new Error("Daily limit reached. Please try again tomorrow or use a different API key.");
+    }
+    
+    // Generic error for other cases
     throw new Error("Unable to design your trip at this moment. Please check your API configuration.");
   }
 };
