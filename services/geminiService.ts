@@ -172,7 +172,7 @@ RESPOND WITH VALID JSON ONLY. Use this exact structure:
 
     console.log('Bytez Response:', response);
     console.log('Response type:', typeof response);
-    console.log('Response keys:', response ? Object.keys(response) : 'null');
+    console.log('Is Array:', Array.isArray(response));
 
     if (!response) {
       console.error('Invalid response:', response);
@@ -181,7 +181,23 @@ RESPOND WITH VALID JSON ONLY. Use this exact structure:
 
     // Handle different response formats
     let tripData;
-    if (typeof response === 'string') {
+    
+    // Bytez returns an array, we need the content from it
+    if (Array.isArray(response)) {
+      console.log('Response is array, length:', response.length);
+      // Try to find the content in the array
+      const contentItem = response.find(item => item?.content || item?.text || item?.output);
+      if (contentItem) {
+        const rawContent = contentItem.content || contentItem.text || contentItem.output;
+        console.log('Found content:', rawContent);
+        tripData = typeof rawContent === 'string' ? JSON.parse(rawContent) : rawContent;
+      } else {
+        // If no content found, try last element
+        const lastItem = response[response.length - 1];
+        console.log('Using last array element:', lastItem);
+        tripData = typeof lastItem === 'string' ? JSON.parse(lastItem) : lastItem;
+      }
+    } else if (typeof response === 'string') {
       tripData = JSON.parse(response);
     } else if (response.content) {
       console.log('Using response.content:', response.content);
@@ -192,9 +208,6 @@ RESPOND WITH VALID JSON ONLY. Use this exact structure:
     } else if (response.text) {
       console.log('Using response.text:', response.text);
       tripData = typeof response.text === 'string' ? JSON.parse(response.text) : response.text;
-    } else if (response.message) {
-      console.log('Using response.message:', response.message);
-      tripData = typeof response.message === 'string' ? JSON.parse(response.message) : response.message;
     } else {
       console.log('Using response directly:', response);
       tripData = response;
