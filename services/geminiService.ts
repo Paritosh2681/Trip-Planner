@@ -22,35 +22,56 @@ export const generateTripItinerary = async (destination: string, days: number): 
   const systemInstruction = `
     You are a world-class travel guide and itinerary planner. You create diverse, exciting, and well-balanced itineraries for general travelers.
     
-    Your itineraries must be diverse, covering:
-    - Mainstream tourist attractions and iconic landmarks (sightseeing)
-    - Nature, parks, beaches, and outdoor scenery (nature)
-    - Local culture, history, and museums (culture)
-    - Authentic food experiences, from street food to famous restaurants (food)
-    - Leisure, shopping, and entertainment (shopping/entertainment)
+    IMPORTANT: Analyze the user's input to determine their intent:
     
-    Do NOT focus exclusively on architecture. Treat architectural sites as just one category among many, including them only if they are genuinely major tourist attractions.
+    1. SPECIFIC CATEGORY REQUEST (e.g., "Mumbai museums", "Paris cafes", "Tokyo temples", "New York parks"):
+       - If the input contains a location AND a specific category/type of place, create an itinerary EXCLUSIVELY focused on that category
+       - Examples: "museums", "temples", "churches", "parks", "beaches", "cafes", "restaurants", "markets", "shopping", "nightlife"
+       - Include ONLY places that match the specified category
+       - Create a focused, themed itinerary around that single category
+    
+    2. GENERAL CITY/DESTINATION (e.g., "Mumbai", "Paris", "Tokyo"):
+       - If ONLY a city/destination name is provided without a specific category, create a diverse, balanced itinerary covering:
+         * Mainstream tourist attractions and iconic landmarks (sightseeing)
+         * Nature, parks, beaches, and outdoor scenery (nature)
+         * Local culture, history, and museums (culture)
+         * Authentic food experiences, from street food to famous restaurants (food)
+         * Leisure, shopping, and entertainment (shopping/entertainment)
+    
+    Do NOT focus exclusively on architecture unless specifically requested. Treat architectural sites as just one category among many.
     
     Your tone should be friendly, descriptive, and inviting—like a knowledgeable local sharing their favorite spots. 
     Avoid overly technical, academic, or dry language. Focus on the experience and atmosphere.
     
-    ⚠️ CRITICAL COORDINATE REQUIREMENTS ⚠️
-    You MUST provide HIGHLY ACCURATE GPS coordinates with AT LEAST 6-8 decimal places for EVERY location:
-    - Use the EXACT coordinates of the main entrance or center point of each specific place
-    - Do NOT use city-center coordinates or approximate locations
-    - Do NOT reuse the same coordinates for different locations
-    - Verify each coordinate corresponds to the actual physical location
-    - Format: {lat: XX.XXXXXXXX, lng: XX.XXXXXXXX}
+    ⚠️ CRITICAL COORDINATE REQUIREMENTS - EXTREMELY IMPORTANT ⚠️
+    You MUST provide HIGHLY ACCURATE GPS coordinates with EXACTLY 8 decimal places for EVERY location:
+    - Research and use the EXACT real-world coordinates of each specific place
+    - Use the coordinates of the MAIN ENTRANCE or CENTER POINT of each location
+    - NEVER use city-center coordinates or approximate locations
+    - NEVER reuse the same coordinates for different locations
+    - NEVER make up or estimate coordinates
+    - Each location MUST have UNIQUE coordinates that are at least 100 meters apart
+    - Verify each coordinate matches the ACTUAL physical location by checking against real maps
+    - Format MUST be: {lat: XX.XXXXXXXX, lng: XX.XXXXXXXX} (8 decimal places)
     
-    Examples of CORRECT coordinates:
-    - Taj Mahal: {lat: 27.17500600, lng: 78.04215500}
-    - Eiffel Tower: {lat: 48.85837009, lng: 2.29447746}
-    - Statue of Liberty: {lat: 40.68924500, lng: -74.04450040}
+    Examples of REQUIRED precision:
+    - Gateway of India, Mumbai: {lat: 18.92197500, lng: 72.83463100}
+    - Taj Mahal, Agra: {lat: 27.17500600, lng: 78.04215500}
+    - Eiffel Tower, Paris: {lat: 48.85837009, lng: 2.29447746}
+    - Statue of Liberty, NYC: {lat: 40.68924500, lng: -74.04450040}
     - Sydney Opera House: {lat: -33.85678200, lng: 151.21529800}
+    - Colosseum, Rome: {lat: 41.89020800, lng: 12.49223100}
     
-    INCORRECT (too vague): {lat: 27.17, lng: 78.04} or {lat: 27.175, lng: 78.042}
+    INCORRECT (will be rejected):
+    - Too few decimals: {lat: 27.175, lng: 78.042}
+    - City center: {lat: 19.07, lng: 72.87}
+    - Same coords for different places
     
-    Each location MUST have unique, precise coordinates.
+    VERIFICATION STEPS YOU MUST FOLLOW:
+    1. Look up the EXACT GPS coordinates for each specific location
+    2. Ensure coordinates have 8 decimal places
+    3. Verify no two locations share the same coordinates
+    4. Check coordinates are within the correct city/region
     
     ⚠️ OPENING HOURS REQUIREMENT ⚠️
     You MUST provide accurate opening hours for EVERY location. Research and include:
@@ -63,7 +84,42 @@ export const generateTripItinerary = async (destination: string, days: number): 
     The output must be strictly valid JSON matching the schema provided.
   `;
 
-  const prompt = `Plan a ${days}-day trip to ${destination}. Create a balanced itinerary with popular attractions, local experiences, and diverse activities. Include detailed information for each location including opening hours, ticket prices, full descriptions, and practical details. Keep descriptions engaging but informative.`;
+  const prompt = `Plan a ${days}-day trip to ${destination}. 
+  
+IMPORTANT: Analyze the destination input carefully:
+- If it contains BOTH a location AND a specific category (e.g., "Mumbai museums", "Paris cafes", "Tokyo temples"), create an itinerary focused EXCLUSIVELY on that category type. Include ONLY places that match the specified category.
+- If it's ONLY a city/destination name (e.g., "Mumbai", "Paris"), create a diverse, balanced itinerary with popular attractions, local experiences, and varied activities across all categories.
+
+CRITICAL FOR EACH ACTIVITY - FOLLOW THIS EXACT STRUCTURE:
+Step 1: Create "locationName" with just the place name (e.g., "Gateway of India")
+Step 2: Copy that EXACT same text to "title" field
+Step 3: Create "description" with the experience text (e.g., "Mumbai's iconic arch monument...")
+
+EXAMPLE OF CORRECT FORMAT:
+{
+  "id": "d1-a1",
+  "time": "09:00 - 12:00",
+  "locationName": "Chhatrapati Shivaji Maharaj Vastu Sangrahalaya",
+  "title": "Chhatrapati Shivaji Maharaj Vastu Sangrahalaya",
+  "description": "Mumbai's premier museum, showcasing vast collections of Indian art, archaeology, and natural history in a stunning Indo-Saracenic building."
+}
+
+WRONG FORMAT (DO NOT DO THIS):
+{
+  "locationName": "Museum",
+  "title": "Mumbai's premier museum showcasing art...",
+  "description": "Chhatrapati Shivaji Maharaj Vastu Sangrahalaya"
+}
+
+ABSOLUTE REQUIREMENT FOR COORDINATES - THIS IS CRITICAL:
+You MUST look up and provide the EXACT, REAL GPS coordinates for each specific location. Do NOT estimate or approximate.
+- Search for the exact location name + "coordinates" or "GPS" 
+- Use the coordinates of the actual building/monument entrance, NOT the city center
+- Each location must have DIFFERENT coordinates (they cannot be the same or very close)
+- Coordinates MUST have exactly 8 decimal places
+- Example: If planning "Chhatrapati Shivaji Maharaj Vastu Sangrahalaya", you MUST use its exact coordinates {lat: 18.92685400, lng: 72.83238500}, NOT Mumbai city center coordinates
+
+Include detailed information for each location: opening hours, ticket prices, full descriptions, and practical details.`;
 
   const response = await ai.models.generateContent({
     model,
@@ -102,16 +158,25 @@ export const generateTripItinerary = async (destination: string, days: number): 
                     properties: {
                       id: { type: Type.STRING, description: "Unique ID (e.g., 'd1-a1')" },
                       time: { type: Type.STRING, description: "e.g., '09:00 - 11:30'" },
-                      title: { type: Type.STRING },
-                      description: { type: Type.STRING, description: "Short one-line summary (20-30 words) for compact view." },
-                      locationName: { type: Type.STRING },
+                      locationName: { 
+                        type: Type.STRING, 
+                        description: "The name of the location/place. Keep it short and simple (2-8 words). Examples: 'Chhatrapati Shivaji Maharaj Vastu Sangrahalaya', 'Gateway of India', 'Marine Drive', 'Elephanta Caves'. Just the name, nothing else."
+                      },
+                      title: { 
+                        type: Type.STRING, 
+                        description: "MUST BE IDENTICAL TO locationName. Copy the exact same value from locationName. This ensures the place name appears correctly."
+                      },
+                      description: { 
+                        type: Type.STRING, 
+                        description: "A descriptive sentence about what visitors experience (20-30 words). Example: 'Mumbai's premier museum, showcasing vast collections of Indian art, archaeology, and natural history in a stunning Indo-Saracenic building.' This is DIFFERENT from locationName/title."
+                      },
                       coordinates: {
                         type: Type.OBJECT,
                         properties: {
-                          lat: { type: Type.NUMBER, description: "HIGHLY PRECISE latitude with 6-8 decimal places (e.g., 27.17500600). Must be exact GPS coordinates of the specific location, not city center." },
-                          lng: { type: Type.NUMBER, description: "HIGHLY PRECISE longitude with 6-8 decimal places (e.g., 78.04215500). Must be exact GPS coordinates of the specific location, not city center." }
+                          lat: { type: Type.NUMBER, description: "CRITICAL - MUST BE EXACT: Look up the REAL GPS coordinates for this specific location. EXACTLY 8 decimal places required (e.g., 18.92685400 for CSMVS Museum, NOT 18.9268 or 19.0000). You MUST research the actual coordinates, do NOT estimate or use city center. Each location needs UNIQUE coordinates." },
+                          lng: { type: Type.NUMBER, description: "CRITICAL - MUST BE EXACT: Look up the REAL GPS coordinates for this specific location. EXACTLY 8 decimal places required (e.g., 72.83238500 for CSMVS Museum, NOT 72.8323 or 72.0000). You MUST research the actual coordinates, do NOT estimate or use city center. Each location needs UNIQUE coordinates." }
                         },
-                        description: "CRITICAL: Must be EXACT GPS coordinates of the location's main entrance or center point with 6-8 decimal precision. Each location must have unique coordinates."
+                        description: "CRITICAL REQUIREMENT: Must be the EXACT, VERIFIED GPS coordinates from real maps/databases. NEVER use approximations. Examples: CSMVS Museum Mumbai {lat: 18.92685400, lng: 72.83238500}, Gateway of India {lat: 18.92197500, lng: 72.83463100}, Taj Mahal {lat: 27.17500600, lng: 78.04215500}. Each location MUST have unique coordinates verified from actual geographic data."
                       },
                       duration: { type: Type.STRING },
                       costEstimate: { type: Type.STRING },

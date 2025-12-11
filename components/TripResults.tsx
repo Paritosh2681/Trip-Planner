@@ -150,7 +150,7 @@ const ActivityCard: React.FC<{
                 
                 <h3 className="text-xl font-medium font-display mb-2 group-hover:text-black leading-tight">{activity.title}</h3>
                 
-                <p className="text-sm text-neutral-600 leading-relaxed mb-3 line-clamp-1">
+                <p className="text-sm text-neutral-600 leading-relaxed mb-3 line-clamp-3">
                     {activity.description}
                 </p>
                 

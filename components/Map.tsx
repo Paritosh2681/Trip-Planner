@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, ZoomControl } from 'react-leaflet';
 import L from 'leaflet';
 import { Trip, Activity } from '../types';
 import { Loader2 } from 'lucide-react';
@@ -39,9 +39,8 @@ const MapController: React.FC<{ activities: Activity[], activeId: string | null 
     if (activeId) {
       const active = activities.find(a => a.id === activeId);
       if (active) {
-        map.flyTo([active.coordinates.lat, active.coordinates.lng], 15, {
-          duration: 0.8,
-          easeLinearity: 0.25
+        map.setView([active.coordinates.lat, active.coordinates.lng], 15, {
+          animate: false
         });
       }
     }
@@ -66,19 +65,19 @@ const CustomMarker: React.FC<{ activity: Activity; isActive: boolean; onClick: (
       position={[activity.coordinates.lat, activity.coordinates.lng]} 
       icon={divIcon}
       eventHandlers={{ 
-        click: () => {
+        click: (e) => {
+          L.DomEvent.stopPropagation(e);
           onClick();
-          // Open popup when marker is clicked
           if (markerRef.current) {
             markerRef.current.openPopup();
           }
         }
       }}
     >
-      <Popup className="sharp-popup">
+      <Popup className="sharp-popup" closeButton={false} autoPan={false}>
         <div className="font-sans text-sm p-1">
           <strong className="block uppercase tracking-wide text-xs mb-1">{activity.time}</strong>
-          <h3 className="font-bold text-base">{activity.title}</h3>
+          <h3 className="font-bold text-base">{activity.title || activity.locationName}</h3>
         </div>
       </Popup>
     </Marker>
@@ -94,6 +93,14 @@ const TripMap: React.FC<MapProps> = ({ trip, activeActivityId, onMarkerClick }) 
   const center = allActivities.length > 0 
     ? { lat: allActivities[0].coordinates.lat, lng: allActivities[0].coordinates.lng } 
     : { lat: 51.505, lng: -0.09 };
+
+  useEffect(() => {
+    if (isMapLoaded && mapRef.current) {
+      setTimeout(() => {
+        mapRef.current?.invalidateSize();
+      }, 100);
+    }
+  }, [isMapLoaded]);
 
   return (
     <div className="h-full w-full bg-[#f4f4f4] relative z-0">
@@ -116,23 +123,28 @@ const TripMap: React.FC<MapProps> = ({ trip, activeActivityId, onMarkerClick }) 
         attributionControl={false}
         whenReady={() => {
           setIsMapLoaded(true);
-          if (mapRef.current) {
-            // Force a resize to ensure proper rendering
-            setTimeout(() => mapRef.current?.invalidateSize(), 100);
+        }}
+        ref={(instance) => {
+          if (instance) {
+            mapRef.current = instance;
+            setTimeout(() => instance.invalidateSize(), 100);
           }
         }}
-        ref={mapRef}
+        fadeAnimation={false}
+        zoomAnimation={false}
+        markerZoomAnimation={false}
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+          attribution='&copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url={`https://api.maptiler.com/maps/dataviz-light/{z}/{x}/{y}.png?key=XkUMWwkztlrx9lO2LzeA`}
           maxZoom={18}
-          updateWhenIdle={true}
-          updateWhenZooming={false}
+          updateWhenIdle={false}
+          updateWhenZooming={true}
           keepBuffer={2}
           minZoom={3}
           tileSize={256}
         />
+        <ZoomControl position="bottomright" />
         <MapController activities={allActivities} activeId={activeActivityId} />
         
         {allActivities.map(activity => (

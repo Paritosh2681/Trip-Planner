@@ -6,7 +6,7 @@ export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, process.cwd(), '');
     console.log('API Key loaded:', env.GEMINI_API_KEY ? 'Yes' : 'No');
     return {
-      base: '/Trip-Planner/',
+      base: '/',
       server: {
         port: 3000,
         host: '0.0.0.0',
