@@ -177,9 +177,21 @@ RESPOND WITH VALID JSON ONLY. Use this exact structure:
       throw new Error("No response from AI");
     }
 
-    // Try different possible response formats
-    const responseText = response.content || response.output || response.text || response;
-    const trip = JSON.parse(responseText) as Trip;
+    // Handle different response formats
+    let tripData;
+    if (typeof response === 'string') {
+      tripData = JSON.parse(response);
+    } else if (response.content) {
+      tripData = typeof response.content === 'string' ? JSON.parse(response.content) : response.content;
+    } else if (response.output) {
+      tripData = typeof response.output === 'string' ? JSON.parse(response.output) : response.output;
+    } else if (response.text) {
+      tripData = typeof response.text === 'string' ? JSON.parse(response.text) : response.text;
+    } else {
+      tripData = response;
+    }
+
+    const trip = tripData as Trip;
   
     // Post-process to fix title/description swap if AI got it wrong
     trip.schedule.forEach(day => {
