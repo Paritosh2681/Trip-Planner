@@ -40,7 +40,7 @@ const App: React.FC = () => {
       setHistory(updatedHistory);
     } catch (err: any) {
       console.error(err);
-      setError("Unable to design your trip at this moment. Please check your API configuration.");
+      setError(err.message || "Unable to design your trip at this moment. Please check your API configuration.");
     } finally {
       setLoading(false);
     }

@@ -231,7 +231,7 @@ Include detailed information for each location: opening hours, ticket prices, fu
         error?.message?.includes('quota') || 
         error?.message?.includes('429') ||
         error?.status === 429) {
-      throw new Error("Daily limit reached. Please try again tomorrow or use a different API key.");
+      throw new Error("Daily limit reached. Please try again tomorrow.");
     }
     
     // Generic error for other cases
