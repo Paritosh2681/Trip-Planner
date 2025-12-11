@@ -231,10 +231,10 @@ Include detailed information for each location: opening hours, ticket prices, fu
         error?.message?.includes('quota') || 
         error?.message?.includes('429') ||
         error?.status === 429) {
-      throw new Error("Daily limit reached. Please try again tomorrow.");
+      throw new Error("Server Under Maintenance, Please Try Again Tomorrow");
     }
     
     // Generic error for other cases
-    throw new Error("Unable to design your trip at this moment. Please check your API configuration.");
+    throw new Error("Server Under Maintenance, Please Try Again Tomorrow");
   }
 };
