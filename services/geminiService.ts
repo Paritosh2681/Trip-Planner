@@ -164,6 +164,12 @@ export const generateTripItinerary = async (destination: string, days: number): 
   
 ⚠️ CRITICAL INSTRUCTIONS - READ CAREFULLY ⚠️
 
+BUDGET AND COST CURRENCY REQUIREMENT:
+- ALL monetary values (budget, ticket prices, cost estimates) MUST be in Indian Rupees (INR) ONLY.
+- Do NOT use Dollars ($), Euros (€), or any other currency.
+- Use the symbol "₹" or "INR" for all monetary values.
+- Example: "₹15,000" or "15,000 INR".
+
 LOCATION SELECTION REQUIREMENTS:
 1. You MUST include the TOP MOST FAMOUS attractions and landmarks for ${destination}
 2. VARY the other locations to provide diversity and show different aspects of the city
