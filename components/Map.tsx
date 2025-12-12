@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, ZoomControl } from 'react-leaflet';
 import L from 'leaflet';
 import { Trip, Activity } from '../types';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Layers } from 'lucide-react';
 
 // Fix for default leaflet marker icon missing in standard builds
 // We use CDN URLs instead of importing assets directly to avoid bundler issues in this environment
@@ -92,6 +92,7 @@ const CustomMarker: React.FC<{ activity: Activity; isActive: boolean; onClick: (
 
 const TripMap: React.FC<MapProps> = ({ trip, activeActivityId, onMarkerClick }) => {
   const [isMapLoaded, setIsMapLoaded] = useState(false);
+  const [mapType, setMapType] = useState<'streets' | 'satellite'>('streets');
   const allActivities = trip.schedule.flatMap(day => day.activities);
   const mapRef = useRef<L.Map | null>(null);
 
@@ -108,6 +109,11 @@ const TripMap: React.FC<MapProps> = ({ trip, activeActivityId, onMarkerClick }) 
     }
   }, [isMapLoaded]);
 
+  // Define tile layer URLs
+  const tileLayerUrl = mapType === 'satellite'
+    ? `https://api.maptiler.com/maps/hybrid/{z}/{x}/{y}.jpg?key=XkUMWwkztlrx9lO2LzeA`
+    : `https://api.maptiler.com/maps/dataviz-light/{z}/{x}/{y}.png?key=XkUMWwkztlrx9lO2LzeA`;
+
   return (
     <div className="h-full w-full bg-[#f4f4f4] relative z-0">
       {/* Loading indicator */}
@@ -119,6 +125,18 @@ const TripMap: React.FC<MapProps> = ({ trip, activeActivityId, onMarkerClick }) 
           </div>
         </div>
       )}
+
+      {/* Map Type Toggle Button */}
+      <div className="absolute top-4 right-4 z-[1000]">
+        <button
+          onClick={() => setMapType(prev => prev === 'streets' ? 'satellite' : 'streets')}
+          className="bg-white hover:bg-neutral-50 border border-neutral-300 shadow-md px-3 py-2 flex items-center gap-2 text-xs uppercase tracking-widest text-neutral-700 hover:text-black transition-colors"
+          aria-label="Toggle map type"
+        >
+          <Layers size={14} />
+          {mapType === 'streets' ? 'Satellite' : 'Streets'}
+        </button>
+      </div>
       
       <MapContainer 
         center={center} 
@@ -141,8 +159,9 @@ const TripMap: React.FC<MapProps> = ({ trip, activeActivityId, onMarkerClick }) 
         markerZoomAnimation={false}
       >
         <TileLayer
+          key={mapType}
           attribution='&copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url={`https://api.maptiler.com/maps/dataviz-light/{z}/{x}/{y}.png?key=XkUMWwkztlrx9lO2LzeA`}
+          url={tileLayerUrl}
           maxZoom={18}
           updateWhenIdle={false}
           updateWhenZooming={true}
