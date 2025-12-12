@@ -55,11 +55,14 @@ export const generateTripItinerary = async (destination: string, days: number): 
     
     IMPORTANT: Analyze the user's input to determine their intent:
     
-    1. SPECIFIC CATEGORY REQUEST (e.g., "Mumbai museums", "Paris cafes", "Tokyo temples", "New York parks"):
+    1. SPECIFIC CATEGORY REQUEST (e.g., "Mumbai museums", "Paris cafes", "Tokyo temples", "New York parks", "Mumbai art gallery and museum"):
        - If the input contains a location AND a specific category/type of place, create an itinerary EXCLUSIVELY focused on that category
-       - Examples: "museums", "temples", "churches", "parks", "beaches", "cafes", "restaurants", "markets", "shopping", "nightlife"
+       - Examples of categories: "museums", "art gallery", "art galleries", "temples", "churches", "parks", "beaches", "cafes", "restaurants", "markets", "shopping", "nightlife"
+       - When user specifies categories like "art gallery and museum" or "museums and galleries", show ONLY those types of places
+       - If user mentions "art gallery" or "museum" specifically, DO NOT include restaurants, shopping, parks, or other unrelated attractions
        - Include the MOST FAMOUS places in that category but vary the selection
        - Prioritize iconic, well-known locations while showing diversity
+       - STRICT FILTERING: Only show places that match the requested category - nothing else
     
     2. GENERAL CITY/DESTINATION (e.g., "Mumbai", "Paris", "Tokyo"):
        - ALWAYS start with the most iconic landmarks and tourist attractions
@@ -186,7 +189,14 @@ DIVERSITY GUIDELINES:
 - National parks and nature reserves should be prioritized when available
 
 ANALYZE THE DESTINATION INPUT:
-- If it contains BOTH a location AND a specific category (e.g., "Mumbai museums", "Paris cafes"), create an itinerary focused on that category with VARIETY in selection
+- If it contains BOTH a location AND a specific category (e.g., "Mumbai museums", "Paris cafes", "Mumbai art gallery and museum"), create an itinerary focused EXCLUSIVELY on that category with VARIETY in selection
+- STRICT CATEGORY FILTERING: When user specifies types like "art gallery", "museum", "temple", "park", etc., show ONLY those types of places
+- DO NOT MIX CATEGORIES: If user asks for "art gallery and museum", do not include restaurants, shopping centers, beaches, or other unrelated attractions
+- Examples:
+  * "Mumbai art gallery and museum" → Show ONLY art galleries and museums in Mumbai
+  * "Paris museums" → Show ONLY museums in Paris
+  * "Tokyo temples" → Show ONLY temples in Tokyo
+  * "New York parks" → Show ONLY parks in New York
 - If it's ONLY a city/destination name (e.g., "Mumbai", "Paris"), create a diverse itinerary that MUST include:
   * The top 3-5 most iconic landmarks (CONSISTENT - Gateway of India, Marine Drive, etc.)
   * MAJOR museums (at least 1-2 prominent ones - MANDATORY)
