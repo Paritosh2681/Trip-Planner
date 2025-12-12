@@ -1,9 +1,9 @@
-import Bytez from "bytez.js";
+import { GoogleGenAI } from "@google/genai";
 import { Trip } from "../types";
 
-const API_KEY = import.meta.env.VITE_BYTEZ_API_KEY || "14aebe0ea6ae5a6d274892d117b0bac0";
-const sdk = new Bytez(API_KEY);
-const model = sdk.model("openai/gpt-4o");
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "AIzaSyBLQVNW06x4YApQS7_WjygtZpV3JeJYWaWY";
+const genAI = new GoogleGenAI({ apiKey: API_KEY });
+const model = genAI.models.generateContent("gemini-2.0-flash-exp");
 
 export const generateTripItinerary = async (destination: string, days: number): Promise<Trip> => {
 
@@ -305,52 +305,20 @@ You must return ONLY valid JSON with this exact schema structure:
 }`;
 
   try {
-    const { error, output } = await model.run([
-      {
-        role: "system",
-        content: systemInstruction
-      },
-      {
+    // Make API call using Gemini
+    const result = await model.generateContent({
+      contents: [{
         role: "user",
-        content: prompt
-      }
-    ]);
+        parts: [{ text: systemInstruction + "\n\n" + prompt }]
+      }]
+    });
 
-    if (error) {
-      console.error('Bytez API Error:', error);
-      throw new Error(typeof error === 'string' ? error : JSON.stringify(error));
-    }
-
-    if (!output) {
+    if (!result || !result.response) {
       throw new Error("No response from AI");
     }
 
-    console.log('Raw API Output:', output);
-    
-    // Bytez returns output in different formats - handle them all
-    let responseText: string;
-    
-    if (typeof output === 'string') {
-      responseText = output;
-    } else if (output && typeof output === 'object') {
-      // Check if it's an array (Bytez sometimes returns array of messages)
-      if (Array.isArray(output)) {
-        const lastMessage = output[output.length - 1];
-        responseText = lastMessage?.content || JSON.stringify(output);
-      } 
-      // Check if it has a content property
-      else if ('content' in output) {
-        responseText = (output as any).content;
-      }
-      // Otherwise stringify the whole object
-      else {
-        responseText = JSON.stringify(output);
-      }
-    } else {
-      throw new Error("Invalid response format from API");
-    }
-
-    console.log('Extracted Response Text:', responseText);
+    const responseText = result.response.text();
+    console.log('Raw API Output:', responseText);
     
     // Clean up the response - remove markdown code blocks if present
     let cleanedResponse = responseText.trim();
@@ -411,8 +379,9 @@ You must return ONLY valid JSON with this exact schema structure:
     // Check if it's an unauthorized error
     if (error?.message?.includes('Unauthorized') || 
         error?.message?.includes('401') ||
-        error?.status === 401) {
-      throw new Error("Invalid API Key. Please check your Bytez API key.");
+        error?.status === 401 ||
+        error?.message?.includes('API_KEY_INVALID')) {
+      throw new Error("Invalid API Key. Please check your Gemini API key.");
     }
     
     // Check if it's a quota/rate limit error
