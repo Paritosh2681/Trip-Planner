@@ -31,7 +31,12 @@ const MapController: React.FC<{ activities: Activity[], activeId: string | null 
     // Only fit bounds once on initial load
     if (!initialFitDone.current && !activeId) {
       const bounds = L.latLngBounds(activities.map(a => [a.coordinates.lat, a.coordinates.lng]));
-      map.fitBounds(bounds, { padding: [50, 50], animate: false, duration: 0 });
+      map.fitBounds(bounds, { 
+        padding: [80, 80], 
+        maxZoom: 13,
+        animate: false, 
+        duration: 0 
+      });
       initialFitDone.current = true;
       return;
     }
@@ -40,7 +45,8 @@ const MapController: React.FC<{ activities: Activity[], activeId: string | null 
       const active = activities.find(a => a.id === activeId);
       if (active) {
         map.setView([active.coordinates.lat, active.coordinates.lng], 15, {
-          animate: false
+          animate: true,
+          duration: 0.5
         });
       }
     }

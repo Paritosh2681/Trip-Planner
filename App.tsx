@@ -76,18 +76,18 @@ const App: React.FC = () => {
       {/* Navigation / Brand */}
       <nav 
         className={`
-          fixed top-0 w-full p-6 md:p-12 flex justify-between items-center z-50 transition-all duration-500 ease-in-out
+          fixed top-0 w-full flex justify-between items-center z-50 transition-all duration-500 ease-in-out
           ${isScrolled 
-            ? 'bg-white/10 backdrop-blur-md shadow-sm pointer-events-auto border-b border-black/5' 
-            : 'bg-transparent backdrop-blur-none pointer-events-none border-b border-transparent'}
+            ? 'bg-white/10 backdrop-blur-md shadow-sm pointer-events-auto border-b border-black/5 p-4 md:p-6' 
+            : 'bg-transparent backdrop-blur-none pointer-events-none border-b border-transparent p-6 md:p-12'}
         `}
       >
         <div className="pointer-events-auto">
              <span className="font-display font-bold text-xl tracking-tighter border-2 border-black p-2 bg-transparent">ARCH.ITINERARY</span>
         </div>
         <div className="pointer-events-auto hidden md:flex gap-8 text-sm uppercase tracking-widest font-medium px-4 py-2">
-            <button onClick={() => setShowHistory(true)} className="hover:line-through decoration-1">Archives</button>
-            <a href="#about" className="hover:line-through decoration-1">About</a>
+            <button onClick={() => setShowHistory(true)} className="hover:underline decoration-1 underline-offset-4">Archives</button>
+            <a href="#about" className="hover:underline decoration-1 underline-offset-4">About</a>
         </div>
         {/* Mobile Nav Toggle Replacement (Simple text links for mobile) */}
         <div className="pointer-events-auto flex md:hidden gap-4 text-xs uppercase tracking-widest font-medium px-2 py-1">

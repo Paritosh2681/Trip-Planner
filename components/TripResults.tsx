@@ -380,58 +380,6 @@ const ActivityCard: React.FC<{
                                 ))}
                             </div>
                         )}
-
-                        {/* Actions */}
-                        <div className="flex flex-wrap gap-3 pt-4 border-t border-neutral-200 print:hidden" role="toolbar" aria-label="Activity actions">
-                            <button 
-                                onClick={shareActivity}
-                                className="text-xs uppercase tracking-widest text-neutral-600 hover:text-black hover:bg-neutral-100 px-3 py-2 border border-neutral-300 transition-colors focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 flex items-center gap-2 min-h-[44px]"
-                                type="button"
-                                aria-label="Share activity"
-                            >
-                                <Share2 size={14} aria-hidden="true" />
-                                <span>Share</span>
-                            </button>
-                            <button 
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    // Add to calendar logic
-                                    const event = {
-                                        title: activity.title,
-                                        description: activity.description,
-                                        location: activity.address || activity.locationName,
-                                        startTime: activity.time.split(' - ')[0],
-                                    };
-                                    console.log('Add to calendar:', event);
-                                }}
-                                className="text-xs uppercase tracking-widest text-neutral-600 hover:text-black hover:bg-neutral-100 px-3 py-2 border border-neutral-300 transition-colors focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 flex items-center gap-2 min-h-[44px]"
-                                type="button"
-                                aria-label="Add to calendar"
-                            >
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                                    <line x1="3" y1="10" x2="21" y2="10"></line>
-                                </svg>
-                                <span>Calendar</span>
-                            </button>
-                            <button 
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    // Bookmark logic
-                                    console.log('Bookmark activity:', activity.id);
-                                }}
-                                className="text-xs uppercase tracking-widest text-neutral-600 hover:text-black hover:bg-neutral-100 px-3 py-2 border border-neutral-300 transition-colors focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 flex items-center gap-2 min-h-[44px]"
-                                type="button"
-                                aria-label="Bookmark activity"
-                            >
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                                    <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
-                                </svg>
-                                <span>Save</span>
-                            </button>
-                        </div>
                     </div>
                 </div>
             )}
@@ -565,7 +513,7 @@ const DaySection: React.FC<{
                             activity={activity}
                             isActive={activeActivityId === activity.id}
                             onClick={() => setActiveActivityId(activity.id)}
-                            autoExpanded={index === 0}
+                            autoExpanded={false}
                         />
                     ))}
                 </div>
@@ -594,33 +542,109 @@ const TripResults: React.FC<TripResultsProps> = ({ trip, onReset }) => {
     }
   }, [activeActivityId, showMobileMap]);
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     if (!itineraryContainerRef.current) return;
     
     setIsExporting(true);
 
     const element = itineraryContainerRef.current;
     
+    // Store original overflow styles
+    const scrollContainer = element.querySelector('[class*="overflow-y-auto"]') as HTMLElement;
+    const originalOverflow = scrollContainer?.style.overflow || '';
+    const originalHeight = scrollContainer?.style.height || '';
+    
+    // Temporarily make all content visible for PDF capture
+    if (scrollContainer) {
+      scrollContainer.style.overflow = 'visible';
+      scrollContainer.style.height = 'auto';
+    }
+
+    // Expand all day sections by clicking their headers if they're collapsed
+    const dayHeaders = element.querySelectorAll('[class*="cursor-pointer"]:has(h2)');
+    const collapsedDays: HTMLElement[] = [];
+    dayHeaders.forEach((header) => {
+      const chevronUp = header.querySelector('[class*="lucide-chevron-up"]');
+      if (!chevronUp) {
+        // Day is collapsed, click to expand
+        collapsedDays.push(header as HTMLElement);
+        (header as HTMLElement).click();
+      }
+    });
+
+    // Expand all activity cards by clicking expand buttons
+    const expandButtons = element.querySelectorAll('button[aria-label*="Expand details"]');
+    const clickedButtons: HTMLElement[] = [];
+    expandButtons.forEach((btn) => {
+      clickedButtons.push(btn as HTMLElement);
+      (btn as HTMLElement).click();
+    });
+
+    // Remove line-clamp from descriptions for PDF
+    const clampedElements = element.querySelectorAll('[class*="line-clamp"]');
+    const originalClasses: Array<{ element: Element; className: string }> = [];
+    clampedElements.forEach((el) => {
+      originalClasses.push({ element: el, className: el.className });
+      el.className = el.className.replace(/line-clamp-\d+/g, '');
+    });
+
+    // Wait for all expansions and layout to settle
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
     // PDF Generation Options
     const opt = {
-      margin:       [10, 10, 10, 10],
+      margin:       [15, 10, 15, 10],
       filename:     `${trip.destination.replace(/\s+/g, '_')}_Itinerary.pdf`,
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2, useCORS: true, letterRendering: true },
-      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      image:        { type: 'jpeg', quality: 0.95 },
+      html2canvas:  { 
+        scale: 2, 
+        useCORS: true, 
+        letterRendering: true,
+        scrollY: 0,
+        scrollX: 0,
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight
+      },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
     };
 
-    if (typeof html2pdf !== 'undefined') {
-        html2pdf().set(opt).from(element).save().then(() => {
-            setIsExporting(false);
-        }).catch((err: any) => {
-            console.error('PDF Export failed:', err);
-            setIsExporting(false);
-            alert('Could not generate PDF. Please try using the browser print option.');
-        });
-    } else {
+    try {
+      if (typeof html2pdf !== 'undefined') {
+        await html2pdf().set(opt).from(element).save();
+      } else {
         window.print();
-        setIsExporting(false);
+      }
+    } catch (err: any) {
+      console.error('PDF Export failed:', err);
+      alert('Could not generate PDF. Please try using the browser print option.');
+    } finally {
+      // Restore original state
+      
+      // Collapse activity cards that were expanded for PDF
+      clickedButtons.forEach(btn => {
+        if (btn && btn.getAttribute('aria-label')?.includes('Collapse')) {
+          btn.click();
+        }
+      });
+
+      // Collapse day sections that were expanded for PDF
+      collapsedDays.forEach(header => {
+        header.click();
+      });
+
+      // Restore line-clamp classes
+      originalClasses.forEach(({ element, className }) => {
+        element.className = className;
+      });
+
+      // Restore overflow styles
+      if (scrollContainer) {
+        scrollContainer.style.overflow = originalOverflow;
+        scrollContainer.style.height = originalHeight;
+      }
+
+      setIsExporting(false);
     }
   };
 
@@ -665,23 +689,14 @@ const TripResults: React.FC<TripResultsProps> = ({ trip, onReset }) => {
                 <button onClick={onReset} className="text-xs uppercase tracking-widest hover:underline text-neutral-500 hover:text-black transition-colors flex items-center gap-2">
                     ← Plan New Trip
                 </button>
-                <div className="flex gap-6">
-                    <button 
-                        onClick={handleExportPDF} 
-                        disabled={isExporting}
-                        className="text-xs uppercase tracking-widest hover:underline flex items-center gap-2 text-neutral-500 hover:text-black transition-colors disabled:opacity-50"
-                    >
-                        {isExporting ? <Loader2 size={14} className="animate-spin" /> : <Printer size={14} />} 
-                        {isExporting ? 'Generating...' : 'Export PDF'}
-                    </button>
-                    <button 
-                        onClick={handleShare} 
-                        className="text-xs uppercase tracking-widest hover:underline flex items-center gap-2 text-neutral-500 hover:text-black transition-colors"
-                    >
-                        {isCopied ? <Check size={14} /> : <Share2 size={14} />} 
-                        {isCopied ? 'Copied' : 'Share Link'}
-                    </button>
-                </div>
+                <button 
+                    onClick={handleExportPDF} 
+                    disabled={isExporting}
+                    className="text-xs uppercase tracking-widest hover:underline flex items-center gap-2 text-neutral-500 hover:text-black transition-colors disabled:opacity-50"
+                >
+                    {isExporting ? <Loader2 size={14} className="animate-spin" /> : <Printer size={14} />} 
+                    {isExporting ? 'Generating...' : 'Export PDF'}
+                </button>
             </div>
             
             <h1 className="text-3xl md:text-4xl lg:text-5xl font-display font-medium leading-tight mb-3 text-black">
