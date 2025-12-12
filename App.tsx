@@ -300,7 +300,7 @@ const App: React.FC = () => {
                             Most travel tools are cluttered, noisy, and overwhelming. We stripped away the ads, the popups, and the infinite scrolling feeds to create a tool that respects your intelligence and your aesthetic.
                         </p>
                         <p>
-                            Powered by Gemini 2.5 Flash, we architect itineraries that balance major landmarks with hidden local textures, creating a spatial narrative for your journey rather than just a checklist.
+                            Powered by GPT-4o, we architect itineraries that balance major landmarks with hidden local textures, creating a spatial narrative for your journey rather than just a checklist.
                         </p>
                     </div>
                 </div>
