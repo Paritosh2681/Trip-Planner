@@ -553,12 +553,20 @@ const TripResults: React.FC<TripResultsProps> = ({ trip, onReset }) => {
     const scrollContainer = element.querySelector('[class*="overflow-y-auto"]') as HTMLElement;
     const originalOverflow = scrollContainer?.style.overflow || '';
     const originalHeight = scrollContainer?.style.height || '';
+    const originalMaxHeight = scrollContainer?.style.maxHeight || '';
     
     // Temporarily make all content visible for PDF capture
     if (scrollContainer) {
       scrollContainer.style.overflow = 'visible';
       scrollContainer.style.height = 'auto';
+      scrollContainer.style.maxHeight = 'none';
     }
+
+    // Hide all elements with data-html2canvas-ignore attribute (map, buttons, etc.)
+    const ignoreElements = element.querySelectorAll('[data-html2canvas-ignore="true"]');
+    ignoreElements.forEach((el) => {
+      (el as HTMLElement).style.display = 'none';
+    });
 
     // Expand all day sections by clicking their headers if they're collapsed
     const dayHeaders = element.querySelectorAll('[class*="cursor-pointer"]:has(h2)');
@@ -589,24 +597,25 @@ const TripResults: React.FC<TripResultsProps> = ({ trip, onReset }) => {
     });
 
     // Wait for all expansions and layout to settle
-    await new Promise(resolve => setTimeout(resolve, 300));
+    await new Promise(resolve => setTimeout(resolve, 500));
     
     // PDF Generation Options
     const opt = {
-      margin:       [15, 10, 15, 10],
+      margin:       [12, 10, 12, 10],
       filename:     `${trip.destination.replace(/\s+/g, '_')}_Itinerary.pdf`,
-      image:        { type: 'jpeg', quality: 0.95 },
+      image:        { type: 'jpeg', quality: 0.98 },
       html2canvas:  { 
-        scale: 2, 
+        scale: 2.5, 
         useCORS: true, 
         letterRendering: true,
         scrollY: 0,
         scrollX: 0,
-        windowWidth: element.scrollWidth,
-        windowHeight: element.scrollHeight
+        ignoreElements: (el: HTMLElement) => {
+          return el.hasAttribute('data-html2canvas-ignore');
+        }
       },
       jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
+      pagebreak:    { mode: ['avoid-all', 'css', 'legacy'], after: '.break-after' }
     };
 
     try {
@@ -621,6 +630,11 @@ const TripResults: React.FC<TripResultsProps> = ({ trip, onReset }) => {
     } finally {
       // Restore original state
       
+      // Show previously hidden elements
+      ignoreElements.forEach((el) => {
+        (el as HTMLElement).style.display = '';
+      });
+
       // Collapse activity cards that were expanded for PDF
       clickedButtons.forEach(btn => {
         if (btn && btn.getAttribute('aria-label')?.includes('Collapse')) {
@@ -642,6 +656,7 @@ const TripResults: React.FC<TripResultsProps> = ({ trip, onReset }) => {
       if (scrollContainer) {
         scrollContainer.style.overflow = originalOverflow;
         scrollContainer.style.height = originalHeight;
+        scrollContainer.style.maxHeight = originalMaxHeight;
       }
 
       setIsExporting(false);
