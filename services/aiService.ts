@@ -1,8 +1,10 @@
 import { Trip } from "../types";
 
-const API_KEY = "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";
+const DEFAULT_API_KEY = "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";
 
-export const generateTripItinerary = async (destination: string, days: number): Promise<Trip> => {
+export const generateTripItinerary = async (destination: string, days: number, apiKey?: string): Promise<Trip> => {
+  const keyToUse = apiKey || DEFAULT_API_KEY;
+
 
   const systemInstruction = `
     You are a world-class travel guide and itinerary planner specializing in creating exceptional, consistent travel experiences.
@@ -306,7 +308,7 @@ You must return ONLY valid JSON with this exact schema structure:
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${API_KEY}`,
+        "Authorization": `Bearer ${keyToUse}`,
         "HTTP-Referer": "https://trip-planner-alpha-flax.vercel.app", // Site URL for rankings
         "X-Title": "Trip Planner", // Site title for rankings
         "Content-Type": "application/json"

@@ -9,6 +9,7 @@ import { ArrowRight, Compass, Loader2, X, History, Trash2, Calendar, MapPin, Arr
 const App: React.FC = () => {
   const [destination, setDestination] = useState('');
   const [days, setDays] = useState<number>(3);
+  const [apiKey, setApiKey] = useState('');
   const [trip, setTrip] = useState<Trip | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +35,7 @@ const App: React.FC = () => {
     setError(null);
 
     try {
-      const data = await generateTripItinerary(destination, days);
+      const data = await generateTripItinerary(destination, days, apiKey);
       setTrip(data);
       const updatedHistory = saveTripToHistory(data);
       setHistory(updatedHistory);
@@ -271,7 +272,27 @@ const App: React.FC = () => {
                     </>
                   )}
                </Button>
-               {error && <p className="mt-4 text-red-600 text-sm font-mono">{error}</p>}
+               {error && (
+                 <div className="mt-4 space-y-2">
+                   <p className="text-red-600 text-sm font-mono">{error}</p>
+                   {error.includes("401") && (
+                     <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                       <label className="block text-xs uppercase tracking-widest text-neutral-400 mb-2">
+                         Enter OpenRouter API Key
+                       </label>
+                       <Input 
+                         placeholder="sk-or-v1-..." 
+                         value={apiKey}
+                         onChange={(e) => setApiKey(e.target.value)}
+                         className="text-sm font-mono"
+                       />
+                       <p className="text-[10px] text-neutral-400 mt-1">
+                         The default API key seems to be invalid. Please provide your own OpenRouter API key.
+                       </p>
+                     </div>
+                   )}
+                 </div>
+               )}
              </div>
           </div>
           
