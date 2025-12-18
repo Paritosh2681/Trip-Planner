@@ -275,19 +275,19 @@ const App: React.FC = () => {
                {error && (
                  <div className="mt-4 space-y-2">
                    <p className="text-red-600 text-sm font-mono">{error}</p>
-                   {error.includes("401") && (
+                   {error.includes("Invalid API Key") && (
                      <div className="animate-in fade-in slide-in-from-top-2 duration-300">
                        <label className="block text-xs uppercase tracking-widest text-neutral-400 mb-2">
-                         Enter OpenRouter API Key
+                         Enter Google AI Studio API Key
                        </label>
                        <Input 
-                         placeholder="sk-or-v1-..." 
+                         placeholder="AIzaSy..." 
                          value={apiKey}
                          onChange={(e) => setApiKey(e.target.value)}
                          className="text-sm font-mono"
                        />
                        <p className="text-[10px] text-neutral-400 mt-1">
-                         The default API key seems to be invalid. Please provide your own OpenRouter API key.
+                         The default API key seems to be invalid. Please provide your own Google AI Studio API key.
                        </p>
                      </div>
                    )}
