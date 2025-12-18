@@ -1,10 +1,6 @@
-import { OpenRouter } from "@openrouter/sdk";
 import { Trip } from "../types";
 
 const API_KEY = "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";
-const openrouter = new OpenRouter({
-  apiKey: API_KEY
-});
 
 export const generateTripItinerary = async (destination: string, days: number): Promise<Trip> => {
 
@@ -306,29 +302,38 @@ You must return ONLY valid JSON with this exact schema structure:
 }`;
 
   try {
-    // Make API call using OpenRouter SDK
-    const stream = await openrouter.chat.send({
-      model: "google/gemma-3-27b-it:free",
-      messages: [
-        {
-          role: "system",
-          content: systemInstruction
-        },
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-      stream: true
+    // Make API call using fetch directly to avoid SDK issues and set headers
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${API_KEY}`,
+        "HTTP-Referer": "https://trip-planner-alpha-flax.vercel.app", // Site URL for rankings
+        "X-Title": "Trip Planner", // Site title for rankings
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        "model": "google/gemma-3-27b-it:free",
+        "messages": [
+          {
+            "role": "system",
+            "content": systemInstruction
+          },
+          {
+            "role": "user",
+            "content": prompt
+          }
+        ]
+      })
     });
-    
-    let responseText = "";
-    for await (const chunk of stream) {
-      const content = chunk.choices[0]?.delta?.content;
-      if (content) {
-        responseText += content;
-      }
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error("OpenRouter API Error:", response.status, response.statusText, errorData);
+      throw new Error(`OpenRouter API Error: ${response.status} ${errorData.error?.message || response.statusText}`);
     }
+
+    const data = await response.json();
+    const responseText = data.choices[0]?.message?.content;
 
     if (!responseText) {
       throw new Error("No response from AI");
