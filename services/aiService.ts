@@ -63,7 +63,8 @@ export const generateTripItinerary = async (destination: string, days: number, a
 
   try {
     // Using Google Gemini API directly via REST to avoid SDK dependency and reduce bundle size
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${keyToUse}`, {
+    // Switching to gemini-2.0-flash-exp as requested/available
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${keyToUse}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
