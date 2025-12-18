@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { generateTripItinerary } from './services/geminiService';
+import { generateTripItinerary } from './services/aiService';
 import { saveTripToHistory, getTripHistory, HistoryItem, clearHistory } from './services/storageService';
 import { Trip } from './types';
 import { Button, Input, Section } from './components/ui/Layout';

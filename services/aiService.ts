@@ -1,9 +1,10 @@
-import Bytez from "bytez.js";
+import { OpenRouter } from "@openrouter/sdk";
 import { Trip } from "../types";
 
-const API_KEY = import.meta.env.VITE_BYTEZ_API_KEY || "14aebe0ea6ae5a6d274892d117b0bac0";
-const sdk = new Bytez(API_KEY);
-const model = sdk.model("google/gemini-3-pro-preview");
+const API_KEY = "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";
+const openrouter = new OpenRouter({
+  apiKey: API_KEY
+});
 
 export const generateTripItinerary = async (destination: string, days: number): Promise<Trip> => {
 
@@ -305,44 +306,35 @@ You must return ONLY valid JSON with this exact schema structure:
 }`;
 
   try {
-    // Make API call using Bytez
-    const { error, output } = await model.run([
-      {
-        role: "user",
-        content: systemInstruction + "\n\n" + prompt
+    // Make API call using OpenRouter SDK
+    const stream = await openrouter.chat.send({
+      model: "google/gemma-3-27b-it:free",
+      messages: [
+        {
+          role: "system",
+          content: systemInstruction
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      stream: true
+    });
+    
+    let responseText = "";
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content;
+      if (content) {
+        responseText += content;
       }
-    ]);
-
-    if (error) {
-      console.error('Bytez API Error:', error);
-      throw new Error(typeof error === 'string' ? error : JSON.stringify(error));
     }
 
-    if (!output) {
+    if (!responseText) {
       throw new Error("No response from AI");
     }
 
-    console.log('Raw API Output:', output);
-    
-    // Handle Bytez response format
-    let responseText: string;
-    
-    if (typeof output === 'string') {
-      responseText = output;
-    } else if (output && typeof output === 'object') {
-      if (Array.isArray(output)) {
-        const lastMessage = output[output.length - 1];
-        responseText = lastMessage?.content || JSON.stringify(output);
-      } else if ('content' in output) {
-        responseText = (output as any).content;
-      } else {
-        responseText = JSON.stringify(output);
-      }
-    } else {
-      throw new Error("Invalid response format from API");
-    }
-
-    console.log('Extracted Response Text:', responseText);
+    console.log('Raw API Output:', responseText);
     
     // Clean up the response - remove markdown code blocks if present
     let cleanedResponse = responseText.trim();
@@ -401,11 +393,10 @@ You must return ONLY valid JSON with this exact schema structure:
     console.error('API Error:', error);
     
     // Check if it's an unauthorized error
-    if (error?.message?.includes('Unauthorized') || 
-        error?.message?.includes('401') ||
-        error?.status === 401 ||
-        error?.message?.includes('API_KEY_INVALID')) {
-      throw new Error("Invalid API Key. Please check your Bytez API key.");
+    if (error?.message?.includes('API_KEY_INVALID') || 
+        error?.message?.includes('invalid') ||
+        error?.status === 400) {
+      throw new Error("Invalid API Key. Please check your Google AI Studio API key.");
     }
     
     // Check if it's a quota/rate limit error
